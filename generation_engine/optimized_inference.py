@@ -139,10 +139,10 @@ class OptimizedESM3Generator:
 
 if __name__ == "__main__":
     # Test loading the optimized generator
-    print("🧪 Running Optimized Generator Config Verification...")
+    print("[TEST] Running Optimized Generator Config Verification...")
     try:
         # Verify bfloat16 + SDPA setup
         generator = OptimizedESM3Generator(precision="bf16", enable_sdpa=True, force_flash_attn=False)
-        print("✅ Optimized ESM3 Generator initialized successfully!")
+        print("[SUCCESS] Optimized ESM3 Generator initialized successfully!")
     except Exception as e:
-        print(f"❌ Verification encountered an error: {e}")
+        print(f"[ERROR] Verification encountered an error: {e}")

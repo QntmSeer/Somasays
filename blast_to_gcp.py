@@ -50,7 +50,7 @@ def main():
         # print(f"[INFO] No files found in {source_dir} matching {args.pattern}")
         return
 
-    # print(f"🚀 Syncing {len(files)} files to gs://{args.bucket}/{dest_prefix}...")
+    # print(f"[SYNC] Syncing {len(files)} files to gs://{args.bucket}/{dest_prefix}...")
     
     # 3. Parallel Upload
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
