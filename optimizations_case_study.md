@@ -93,11 +93,3 @@ Low-precision operations combined with SRAM block-level attention tracking push 
 
 ---
 
-## 5. CV-Ready Professional Bullet Points
-
-Use these highly professional, metric-driven bullet points on your resume to describe this performance engineering work:
-
-* **Accelerated ESM3 Protein Foundation Model (1.4B Parameters) inference pipelines by up to 3.4x** by designing a high-performance execution engine utilizing PyTorch Scaled Dot Product Attention (SDPA) and bfloat16 automatic mixed-precision (AMP).
-* **Reduced peak GPU VRAM requirements by 58%**, effectively eliminating Out-Of-Memory (OOM) bottlenecks during 3D coordinate folding and expanding the maximum sequence context length from **1,024 to 2,048 residues**.
-* **Developed a low-overhead GPU inference profiler and automated benchmarking suite** to track latency, memory allocation (VRAM), and generation throughput scaling curves across multi-variable protein lengths, compiling structured CSV/JSON performance reports.
-* **Integrated dynamic weight quantization and low-precision float16/bfloat16 casting interfaces** to enable scalable, cost-effective inference of heavy structural models on standard cloud instances.
