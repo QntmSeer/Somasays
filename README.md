@@ -152,7 +152,7 @@ Our detailed benchmarking indicates that combining **bfloat16 AMP** with **Flash
 * **58% VRAM Reduction**: Peak memory footprint at 1,024 residues drops from 14.6 GB to **5.9 GB**.
 * **Expanded Context Limits**: Prevents unoptimized Out-Of-Memory (OOM) crashes, extending the maximum folding length from **1,024 to 2,048 residues**.
 
-For a publication-grade breakdown of our findings, GPU hardware profiles, and optimization methodologies, read our full [ESM3 Optimization and Performance Case Study](file:///c:/Users/Gebruiker/Documents/Computational%20Bio/Somasays/optimizations_case_study.md).
+For a publication-grade breakdown of our findings, GPU hardware profiles, and optimization methodologies, read our full [ESM3 Optimization and Performance Case Study](optimizations_case_study.md).
 
 ---
 
