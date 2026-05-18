@@ -20,7 +20,7 @@ def run_multimodal_generation(
     Loads fine-tuned ESM3 weights and generates synthetic multimodal candidates.
     """
     print("==============================================")
-    print("🧪 Somasays Multimodal Generation Engine 🧪")
+    print("[ENGINE] Somasays Multimodal Generation Engine")
     print("==============================================")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -49,8 +49,8 @@ def run_multimodal_generation(
     os.makedirs(output_dir, exist_ok=True)
 
     print("\n==============================================")
-    print(f"🚀 Launching generation of {num_candidates} synthetic designs...")
-    print(f"🚀 Sequence Template Prompt: {prompt_sequence}")
+    print(f"[LAUNCH] Launching generation of {num_candidates} synthetic designs...")
+    print(f"[LAUNCH] Sequence Template Prompt: {prompt_sequence}")
     print("==============================================\n")
 
     for i in range(num_candidates):
@@ -93,8 +93,8 @@ def run_multimodal_generation(
         print(f"   [+] Saved Sequence to: {fasta_path}\n")
 
     print("==============================================")
-    print(f"🎉 SUCCESS: Generated {num_candidates} complete multimodal candidates!")
-    print(f"📂 Saved to: {output_dir}")
+    print(f"[SUCCESS] Generated {num_candidates} complete multimodal candidates!")
+    print(f"[OUTPUT] Saved to: {output_dir}")
     print("==============================================")
 
 if __name__ == "__main__":

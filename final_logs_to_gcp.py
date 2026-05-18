@@ -28,4 +28,4 @@ def final_cleanup():
 
 if __name__ == "__main__":
     final_cleanup()
-    print("\n✨ GOLDEN LOGS SECURED ✨")
+    print("\n[SUCCESS] GOLDEN LOGS SECURED")

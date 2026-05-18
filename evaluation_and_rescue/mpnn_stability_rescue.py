@@ -39,7 +39,7 @@ def automated_stability_rescue(candidates_dir: str, out_dir: str, design_chain: 
     os.makedirs(out_dir, exist_ok=True)
 
     print("\n================================================")
-    print("🚀 HIGH PERFORMANCE CLUSTER (HPC) DEPLOYMENT")
+    print("[LAUNCH] HIGH PERFORMANCE CLUSTER (HPC) DEPLOYMENT")
     print("================================================")
     print("Copy-paste the following command directly into your terminal")
     print("to run massive inverse-folding on your GPU cluster:")
