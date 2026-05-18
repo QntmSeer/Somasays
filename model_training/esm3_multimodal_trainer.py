@@ -19,7 +19,7 @@ class SomasaysMultimodalDataset(Dataset):
         Pre-caches all 1D Sequences and 3D PDB text files into RAM to completely
         eliminate the hard drive I/O bottleneck during the PyTorch training loop.
         """
-        print("Pre-caching dataset into 100GB Host RAM...")
+        print("Pre-caching dataset into Host RAM...")
         self.data = []
         
         with open(jsonl_path, 'r') as f:
@@ -216,10 +216,10 @@ def train_multimodal_esm3(jsonl_path, pdb_dir, output_dir):
                     
                 global_step += 1
         
-        # --- EPOCH COMPLETE PROTECTION SAVE ---
+        # --- EPOCH COMPLETE CHECKPOINT SAVE ---
         if local_rank == 0:
             epoch_save_path = os.path.join(output_dir, f"esm3_multimodal_epoch_{epoch+1}.pth")
-            print(f"\n[Resurrection Engine] Saving Epoch {epoch+1} weights to {epoch_save_path}...")
+            print(f"\n[Model Checkpointer] Saving Epoch {epoch+1} weights to {epoch_save_path}...")
             # Unwrap the DDP model to save pure, clean weights
             torch.save(model.module.state_dict(), epoch_save_path)
             

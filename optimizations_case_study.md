@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="somasays_logo.png" alt="Somasays Logo" width="600">
+</p>
+
 # ESM3 Protein Foundation Model Optimization & Performance Case Study
 
 This case study documents the engineering methodologies, performance bottlenecks, and structural optimizations applied to the **EvolutionaryScale ESM3 (1.4B Parameter) Multimodal Protein Foundation Model** within the Somasays platform. 
