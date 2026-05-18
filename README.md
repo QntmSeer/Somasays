@@ -29,9 +29,10 @@ graph TD
         F -->|FlashAttention SDPA, VRAM Profiling| G[Autoregressive Peptides & Coordinates]
     end
     
-    subgraph Downstream Evaluation
+    subgraph Downstream Evaluation & Serving
         G -->|mpnn_stability_rescue.py| H[ProteinMPNN Sequence Rescue]
-        H -->|af3_complex_predictor.py| I[AlphaFold 3 Validation Jobs]
+        G -->|api_service/server.py| J[FastAPI Model Serving API]
+        J -->|Asynchronous Background Queue| K[Inference Worker Processes]
     end
 ```
 
@@ -63,6 +64,9 @@ graph TD
 
 ```text
 Somasays/
+├── api_service/                 # Atlassian-inspired Model Serving Edge Service
+│   ├── server.py                    # FastAPI web server, routing & polling schema
+│   └── tasks.db                     # Decoupled task queue state tracking
 ├── data_pipeline/               # Data ingestion & caching
 │   ├── fetch_uniprot_data.py        # Extracts raw metadata and sequence strings
 │   ├── preprocess_sequences.py      # Standardizes sequences for tokenization
@@ -114,6 +118,30 @@ Sweep sequence lengths up to 2,048 residues to generate comparative line charts 
 ```bash
 python analysis/benchmark_suite.py --outdir analysis/outputs
 ```
+
+### 4. Deploying the Model Serving API Service (Edge Architecture)
+Spin up the systems-optimized model serving API. This utilizes a decoupled, asynchronous queue architecture to isolate heavy GPU inference tasks:
+```bash
+# Install server dependencies
+pip install fastapi uvicorn pydantic --quiet
+
+# Launch the FastAPI web engine
+uvicorn api_service.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Interaction Flow:
+* **Submit a folding/generation task**:
+  ```bash
+  curl -X POST "http://localhost:8000/v1/tasks" \
+       -H "Content-Type: application/json" \
+       -d "{\"prompt_sequence\": \"MKA___________________VLA\", \"num_steps\": 8, \"temperature\": 0.7}"
+  ```
+  *Response*: `{"task_id": "a90f117c-...", "status": "PENDING", ...}`
+
+* **Poll for completion and coordinate outputs**:
+  ```bash
+  curl "http://localhost:8000/v1/tasks/<task_id>"
+  ```
 
 ---
 
