@@ -46,8 +46,9 @@ evaluation_and_rescue/af3_jobs/*
 !evaluation_and_rescue/af3_jobs/.gitkeep
 
 # Local Generation Outputs (except the master analysis/outputs)
-outputs/
+/outputs/
 generation_engine/outputs/
+!analysis/outputs/
 
 # Archive Files, Backups & Patches
 *.zip
