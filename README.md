@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="somasays_logo.png" alt="Somasays Logo" width="600">
+  <img src="somasays_pixel_logo.png" alt="Somasays Logo" width="600">
 </p>
 
 # Somasays: High-Throughput ESM3 Fine-Tuning & Inference Optimization Engine

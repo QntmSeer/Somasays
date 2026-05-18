@@ -1,7 +1,7 @@
 # Somasays | Platform Overview & Technical Pitch
 
 <p align="center">
-  <img src="somasays_logo.png" alt="Somasays Logo" width="500">
+  <img src="somasays_pixel_logo.png" alt="Somasays Logo" width="500">
 </p>
 
 Somasays is an end-to-end, high-performance computational framework built for **de novo plant-peptide generation, 3D structural folding, and inference optimization** using the **EvolutionaryScale ESM3 (1.4B) Protein Foundation Model**. 
