@@ -1,0 +1,64 @@
+# Somasays Git Ignore Configuration
+
+# Virtual Environments
+venv/
+venv_somasays/
+venv_somasays_win/
+.venv/
+env/
+ENV/
+
+# Python Cache & Builds
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+
+# Security, SSH & API Credentials (CRITICAL)
+gcp_key.json
+*.pem
+*.key
+.env
+restored_brev_ssh_config
+
+# Deep Learning Weights & Large Model Checkpoints
+weights/
+*.pth
+*.pt
+*.bin
+*.h5
+*.onnx
+*.ckpt
+
+# Local Logs & Sync Metadata
+*.log
+sync_mega.log
+generation.log
+
+# Large Biological Datasets & Temporary Runs
+# (We preserve the directory structures using gitkeep but ignore high-volume data)
+data/processed/3d_structures/
+data/processed/somasays_dataset.jsonl
+evaluation_and_rescue/af3_jobs/*
+!evaluation_and_rescue/af3_jobs/.gitkeep
+
+# Local Generation Outputs (except the master analysis/outputs)
+outputs/
+generation_engine/outputs/
+
+# Archive Files, Backups & Patches
+*.zip
+*.tar
+*.gz
+*.tgz
+*.rar
+*.7z
+
+# OS / Editor settings
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
