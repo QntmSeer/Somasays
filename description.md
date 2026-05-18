@@ -52,3 +52,14 @@ Somasays serves as a direct showcase of elite, production-grade ML engineering s
 | **Model Compression** | Implemented dynamic low-precision casting (BF16/FP16) and structural weight quantization (8-bit) wrappers. |
 | **Distributed Scaling** | Configured PyTorch DDP with NCCL, static graph execution, and RAM caching to eliminate I/O barriers. |
 | **Biophysical Pipeline Design** | Chained generative MLMs, transformer fold-generators, and backbone stability rescue (ProteinMPNN). |
+
+---
+
+## What is Left to be Done (Roadmap)
+
+To elevate Somasays into a fully automated, web-scale biological factory, the following roadmap features are planned for future development:
+
+1. **Dynamic Tensor Parallelism (TP)**: Sharding the 1.4B parameters and attention matrices across multiple GPU nodes using Megatron-LM/DeepSpeed to support structural resolution of massive multi-domain complexes exceeding 4,000 residues.
+2. **Hopper Native FP8 & FlashAttention-3**: Upgrading attention backends to native FlashAttention-3 kernels on Hopper architectures (H100/H200) to utilize low-precision FP8 operations and maximize decoding throughput.
+3. **4-Bit NF4 Quantization (Double Quantization)**: Implementing NF4 dynamic compression via bitsandbytes to run structural inference pipelines in under 1 GB VRAM, allowing deployment on low-cost consumer GPUs.
+4. **Asynchronous AlphaFold 3 API Loop**: Building a background daemon to automatically submit generated protein coordinates, parse confidence outputs (pLDDT, iPAE), and index results in a database.
