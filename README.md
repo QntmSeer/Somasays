@@ -125,3 +125,21 @@ Our detailed benchmarking indicates that combining **bfloat16 AMP** with **Flash
 * **Expanded Context Limits**: Prevents unoptimized Out-Of-Memory (OOM) crashes, extending the maximum folding length from **1,024 to 2,048 residues**.
 
 For a publication-grade breakdown of our findings, GPU hardware profiles, and optimization methodologies, read our full [ESM3 Optimization and Performance Case Study](file:///c:/Users/Gebruiker/Documents/Computational%20Bio/Somasays/optimizations_case_study.md).
+
+---
+
+## What is Left to be Done (Roadmap)
+
+To elevate Somasays into a fully automated, web-scale biological factory, the following roadmap features are planned for future development:
+
+1. **Dynamic Tensor Parallelism (TP)**:
+   * Integrate DeepSpeed or Megatron-LM to shard the 1.4B parameters and attention matrices across multiple GPU nodes. This will enable structural folding of large multi-domain complexes exceeding 4,000 residues.
+
+2. **Hopper Native FP8 & FlashAttention-3**:
+   * Migrate SDPA backends to native FlashAttention-3 kernels on Hopper GPU architectures (H100/H200). This will utilize low-precision FP8 Tensor Cores to speed up sequential autoregressive decoding.
+
+3. **4-Bit NF4 Quantization (Double Quantization)**:
+   * Implement 4-bit NormalFloat (NF4) dynamic loading interfaces using `bitsandbytes`. This will compress the active model footprint below 1 GB VRAM, allowing full 3D structural inference on low-cost consumer GPUs.
+
+4. **Asynchronous AlphaFold 3 API Loop**:
+   * Build a background daemon to automatically submit generated protein coordinates to the AlphaFold 3 server, parse confidence metrics (pLDDT, iPAE), and store results in a PostgreSQL database for real-time downstream validation.
