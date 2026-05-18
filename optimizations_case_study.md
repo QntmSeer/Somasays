@@ -81,15 +81,15 @@ The generated line charts demonstrate the dramatic improvements in latency scali
 
 ### A. Latency Scaling Comparison
 FlashAttention + BF16 reduces latency scaling from a steep curve to a highly manageable linear trend, yielding a **3.4x speedup** for large sequences.
-![Latency Scaling Curves](file:///c:/Users/Gebruiker/Documents/Computational%20Bio/Somasays/analysis/outputs/latency_comparison.png)
+![Latency Scaling Curves](analysis/outputs/latency_comparison.png)
 
 ### B. VRAM Memory Footprint Comparison
 Unoptimized FP32 baseline execution triggers OOMs past 1,024 residues, whereas the **BF16 + FlashAttention (SDPA)** configuration maintains a low, linear memory profile, enabling structural folding up to **2,048 residues** (a **58% VRAM reduction** at 1,024 residues).
-![VRAM Footprint Curves](file:///c:/Users/Gebruiker/Documents/Computational%20Bio/Somasays/analysis/outputs/memory_comparison.png)
+![VRAM Footprint Curves](analysis/outputs/memory_comparison.png)
 
 ### C. Inference Throughput Comparison
 Low-precision operations combined with SRAM block-level attention tracking push generation throughput from a baseline average of 52 tokens/s to a peak of **176 tokens/second**.
-![Throughput Curves](file:///c:/Users/Gebruiker/Documents/Computational%20Bio/Somasays/analysis/outputs/throughput_comparison.png)
+![Throughput Curves](analysis/outputs/throughput_comparison.png)
 
 ---
 
