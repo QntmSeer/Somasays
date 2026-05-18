@@ -10,7 +10,7 @@ This document serves as a high-impact executive summary detailing the platform's
 
 ---
 
-## 🎯 1. The Core Objective & Scientific Value
+## 1. The Core Objective & Scientific Value
 Standard computational protein design is bottlenecked by the heavy cost of resolving 3D folding structures in production. **Somasays** bridges generative artificial intelligence and high-performance systems engineering to make large-scale structural folding viable for real-world research by:
 * **Generative Autoregression**: Designing de novo plant-like peptides using an iterative Masked Language Model (MLM) sampling pipeline.
 * **Structural Fold Resolution**: Generating 3D coordinate backbones using the ESM3 geometric structure track.
@@ -18,14 +18,14 @@ Standard computational protein design is bottlenecked by the heavy cost of resol
 
 ---
 
-## ⚡ 2. The Computational Challenge
+## 2. The Computational Challenge
 Deploying ESM3 (1.4B parameters) introduces major scalability limits in standard deep learning pipelines:
 1. **Autoregressive Latency**: Autoregressive sequence sampling is memory-bandwidth bound, resulting in low throughput.
 2. **Quadratic VRAM Escalation**: The geometric attention matrices scale quadratically ($O(N^2)$) with protein length, triggering **Out-Of-Memory (OOM) crashes** on sequences exceeding **1,024 residues** on standard GPU nodes.
 
 ---
 
-## 🛠️ 3. The Engineering Breakthrough (Optimizations)
+## 3. The Engineering Breakthrough (Optimizations)
 To solve these bottlenecks, a specialized performance-engineering layer was developed within Somasays:
 * **FlashAttention-2 Integration**: Leveraged PyTorch Scaled Dot Product Attention (SDPA) to bypass standard mathematical attention. FlashAttention-2 computes attention in high-speed SRAM blocks, reducing GPU High-Bandwidth Memory (HBM) transfers and lowering attention matrix memory complexity from $O(N^2)$ to linear $O(N)$.
 * **BFloat16 Mixed Precision**: Automated weights and activations casting to `bfloat16`, utilizing hardware Tensor Cores for a **2x latency speedup** and 50% memory reduction without structural numerical underflow.
@@ -33,7 +33,7 @@ To solve these bottlenecks, a specialized performance-engineering layer was deve
 
 ---
 
-## 📊 4. Quantified Performance Impact
+## 4. Quantified Performance Impact
 
 Benchmarked against baseline execution on enterprise cloud GPU instances, the optimized Somasays engine achieved:
 * **3.4x Latency Acceleration**: Structural coordinate folding scales linearly, speeding up execution significantly on long sequences.
@@ -43,7 +43,7 @@ Benchmarked against baseline execution on enterprise cloud GPU instances, the op
 
 ---
 
-## 🎯 5. Core ML Engineering Competencies Showcased
+## 5. Core ML Engineering Competencies Showcased
 Somasays serves as a direct showcase of elite, production-grade ML engineering skills:
 
 | Competency | Implementation in Somasays |

@@ -10,7 +10,7 @@ This repository provides a complete pipeline from raw sequence preprocessing to 
 
 ---
 
-## 🚀 Core Platform Architecture
+## Core Platform Architecture
 
 ```mermaid
 graph TD
@@ -37,7 +37,7 @@ graph TD
 
 ---
 
-## 🛠️ Key Technical Features
+## Key Technical Features
 
 1. **High-Throughput Distributed Fine-Tuning**:
    * Multi-GPU distributed training using PyTorch **Distributed Data Parallel (DDP)** with NCCL communication backends.
@@ -59,7 +59,7 @@ graph TD
 
 ---
 
-## 📂 Repository Directory Layout
+## Repository Directory Layout
 
 ```text
 Somasays/
@@ -91,7 +91,7 @@ Somasays/
 
 ---
 
-## 🚀 Execution & Quick Start Guide
+## Execution & Quick Start Guide
 
 ### 1. Environment Activation & Dependencies
 Ensure your environment contains CUDA 12+ and PyTorch 2.0+ with matching drivers:
@@ -117,7 +117,7 @@ python analysis/benchmark_suite.py --outdir analysis/outputs
 
 ---
 
-## 📊 Quantified Performance Gains
+## Quantified Performance Gains
 
 Our detailed benchmarking indicates that combining **bfloat16 AMP** with **FlashAttention (SDPA)** eliminates baseline computational limits:
 * **3.4x Speedup**: Latency during long structural folding loops scales linearly instead of quadratically.
