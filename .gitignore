@@ -71,3 +71,8 @@ generation_engine/outputs/
 .idea/
 .vscode/
 Thumbs.db
+
+# Scratch / Temporary Scripts
+/scratch/
+scratch/
+
