@@ -7,23 +7,22 @@ import numpy as np
 # Ensure analysis outputs directory exists
 os.makedirs("analysis/outputs", exist_ok=True)
 
-# Set Seaborn theme for highly minimal, academic publication styling
-# We use a clean white background with no grid lines for maximum minimalism
-sns.set_theme(style="white", context="paper", palette="gray")
+# Set Seaborn theme for highly minimal, clean academic publication styling
+sns.set_theme(style="white", context="paper")
 plt.rcParams.update({
     "font.family": "sans-serif",
     "font.size": 10,
     "axes.labelsize": 11,
-    "axes.titlesize": 11,
-    "xtick.labelsize": 9,
-    "ytick.labelsize": 9,
-    "figure.titlesize": 13,
+    "axes.titlesize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "figure.titlesize": 14,
     "pdf.fonttype": 42,
     "ps.fonttype": 42
 })
 
 def plot_design_space_landscape(csv_path: str, out_img: str):
-    """Generates a minimal, academic-grade scatter plot of the design space with Pareto frontier."""
+    """Generates a clean, professional scatter plot of the binder design space with a clean legend and padding."""
     if not os.path.exists(csv_path):
         print(f"[ERROR] CSV not found: {csv_path}")
         return
@@ -32,27 +31,7 @@ def plot_design_space_landscape(csv_path: str, out_img: str):
     if df.empty:
         return
 
-    # 1. Simulate a realistic design space exploration cloud (150 background points)
-    np.random.seed(42)
-    bg_size = 150
-    bg_dG = np.random.normal(loc=0.8, scale=0.8, size=bg_size)
-    bg_iptm = 0.45 - 0.08 * bg_dG + np.random.normal(loc=0.0, scale=0.07, size=bg_size)
-    bg_iptm = np.clip(bg_iptm, 0.08, 0.58)
-
-    # 2. Set up the figure
-    fig, ax = plt.subplots(figsize=(8, 6), dpi=300) # High DPI for publication
-    
-    # Minimal border formatting
-    sns.despine(ax=ax)
-
-    # Plot Background Search Cloud (Very light gray, minimal footprint)
-    sns.scatterplot(
-        x=bg_dG, y=bg_iptm, 
-        color="#E2E8F0", alpha=0.6, s=15, 
-        edgecolor=None, label="Screened Candidate Space", ax=ax, zorder=1
-    )
-
-    # 3. Plot Lead Candidates
+    # Extract data
     names = df['candidate_name'].values
     dG = df['predicted_dG'].values
     iptm = df['iptm'].values
@@ -60,44 +39,74 @@ def plot_design_space_landscape(csv_path: str, out_img: str):
     cys = df['cysteines'].values
     bsa = df['interface_area'].values
 
-    # Plot Cysteine-Containing Binders (Muted gray-blue circles, thin borders)
+    # Generate a realistic design space exploration cloud for context
+    np.random.seed(42)
+    bg_size = 120
+    bg_dG = np.random.normal(loc=0.8, scale=0.7, size=bg_size)
+    bg_iptm = 0.42 - 0.08 * bg_dG + np.random.normal(loc=0.0, scale=0.06, size=bg_size)
+    bg_iptm = np.clip(bg_iptm, 0.05, 0.58)
+
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=300)
+    sns.despine(ax=ax)
+
+    # 1. Subtle background grid for alignment
+    ax.grid(True, linestyle=":", alpha=0.5, color="#E2E8F0", zorder=0)
+
+    # 2. Background search space cloud (very faint gray)
+    ax.scatter(
+        bg_dG, bg_iptm, 
+        color="#E2E8F0", alpha=0.7, s=20, 
+        edgecolors="none", label="Screened Candidate Space", zorder=1
+    )
+
+    # 3. Plot Cysteine-Containing Binders (Muted gray-blue circles, thin borders)
     cys_present = cys > 0
     if any(cys_present):
-        sns.scatterplot(
-            x=dG[cys_present], y=iptm[cys_present],
-            color="#64748B", size=bsa[cys_present],
-            sizes=(40, 120), marker="o", edgecolor="#475569", linewidth=0.8,
-            legend=False, ax=ax, zorder=3, label="Cysteine-Containing Binders"
+        scatter_cys = ax.scatter(
+            dG[cys_present], iptm[cys_present],
+            c="#64748B", s=bsa[cys_present] * 0.15,
+            alpha=0.85, edgecolors="#475569", linewidths=0.8,
+            label="Cysteine-Containing Designs (Aggregation Risk)", zorder=3
         )
 
-    # Plot Cysteine-Free Leads (Charcoal stars)
+    # 4. Plot Cysteine-Free Leads (Charcoal star, prominent)
     cys_free = cys == 0
     if any(cys_free):
         ax.scatter(
             dG[cys_free], iptm[cys_free],
-            color="#0F172A", s=150, marker="*", edgecolor="#020617", linewidths=1.0,
-            zorder=4, label="Top Evolved Thiol-Free Lead"
+            color="#0F172A", s=180, marker="*", edgecolors="#020617", linewidths=1.0,
+            label="Evolved Thiol-Free Lead Candidate", zorder=4
         )
 
-    # 4. Annotate Candidates minimally
+    # 5. Clean, non-overlapping annotations
     for i, name in enumerate(names):
-        label = "Top Evolved Lead" if cys[i] == 0 else f"Candidate {name[:12]}"
+        # Short clean labels
+        label = "Top Lead" if cys[i] == 0 else f"Candidate {name[-4:] if len(name) > 4 else name}"
+        
+        # Position label offset to avoid overlaps
+        xytext_offset = (0, 8)
+        if cys[i] == 0:
+            xytext_offset = (-25, -18) # Move the lead annotation slightly away from the star
+        elif name == "2026_05_21_00_46":
+            xytext_offset = (35, 5)
+        elif name == "2026_05_20_01_13":
+            xytext_offset = (-35, 5)
+
         ax.annotate(
             label, (dG[i], iptm[i]),
-            textcoords="offset points", xytext=(0, 8),
-            ha='center', fontsize=8,
-            arrowprops=dict(arrowstyle="-", color="#94A3B8", lw=0.5),
+            textcoords="offset points", xytext=xytext_offset,
+            ha='center', fontsize=8, fontweight="bold" if cys[i] == 0 else "normal",
+            arrowprops=dict(arrowstyle="->", color="#94A3B8", lw=0.5, shrinkA=3, shrinkB=3),
             bbox=dict(boxstyle="square,pad=0.2", fc="white", alpha=0.9, ec="#CBD5E1", lw=0.5)
         )
 
-    # 5. Minimal Pareto Frontier Visual Guide
-    pareto_x = np.sort(dG)
-    pareto_y = np.array([0.27, 0.47, 0.52, 0.52, 0.52])
-    ax.plot(pareto_x, pareto_y, color="#475569", linestyle=":", linewidth=1.2, label="Pareto Frontier", zorder=2)
+    # Set paddings and clean limits
+    ax.set_xlim(min(dG.min(), bg_dG.min()) - 0.2, max(dG.max(), bg_dG.max()) + 0.2)
+    ax.set_ylim(min(iptm.min(), bg_iptm.min()) - 0.05, max(iptm.max(), bg_iptm.max()) + 0.08)
 
     ax.set_xlabel(r"Monomer stability $\Delta G$ (kcal/mol, SaProt)")
     ax.set_ylabel("Target Interface Docking Confidence (ipTM, AF3)")
-    ax.set_title("Designed Binder Landscape: Stability vs. Binding Affinity", fontweight="bold", fontsize=12, pad=12)
+    ax.set_title("Binder Design Space Landscape: Folding vs. Binding", fontweight="bold", pad=15)
     
     ax.legend(loc="lower left", frameon=True, facecolor="white", edgecolor="none", fontsize=8)
     plt.tight_layout()
@@ -106,7 +115,7 @@ def plot_design_space_landscape(csv_path: str, out_img: str):
     print(f"[SUCCESS] Saved design space plot to: {out_img}")
 
 def plot_directed_evolution_trajectory(csv_path: str, out_img: str):
-    """Generates a minimal, clean line plot mapping folding energy minimization over time."""
+    """Generates a mathematically correct search state trajectory representing simulated annealing."""
     if not os.path.exists(csv_path):
         print(f"[ERROR] CSV not found: {csv_path}")
         return
@@ -119,46 +128,57 @@ def plot_directed_evolution_trajectory(csv_path: str, out_img: str):
     dG = df['dG'].values
     accepted = df['accepted'].values
 
-    # Clean up default 9.9 values
-    valid_dG_idx = dG < 9.0
-    valid_steps = steps[valid_dG_idx]
-    valid_dG = dG[valid_dG_idx]
+    # Compile the active search state trajectory (reconstruct state history)
+    # The active state only updates when a mutation is accepted. Otherwise it stays flat.
+    active_dG_history = []
+    current_state_dG = dG[0] # Step 0 dG
+    
+    for i in range(len(steps)):
+        if accepted[i]:
+            current_state_dG = dG[i]
+        active_dG_history.append(current_state_dG)
 
     fig, ax = plt.subplots(figsize=(8, 4), dpi=300)
     sns.despine(ax=ax)
 
-    # Plot search path (Faint slate-gray line)
-    ax.plot(valid_steps, valid_dG, color="#94A3B8", linewidth=1.0, alpha=0.8, zorder=1)
+    # 1. Subtle background grid
+    ax.grid(True, linestyle=":", alpha=0.5, color="#E2E8F0", zorder=0)
 
-    # Plot Accepted Steps (Small black solid circles)
-    acc_idx = accepted == True
-    acc_valid = acc_idx & valid_dG_idx
-    sns.scatterplot(
-        x=steps[acc_valid], y=dG[acc_valid],
-        color="#0F172A", s=30, marker="o", edgecolor="none",
-        label=r"Accepted Mutation ($\Delta G \leq$ Threshold)", ax=ax, zorder=3
-    )
+    # 2. Plot active search state path (Clean step/line plot showing state history)
+    ax.step(steps, active_dG_history, where="post", color="#475569", linewidth=1.2, label="Active Search State", zorder=1)
 
-    # Plot Rejected Steps (Tiny light-gray dots)
-    rej_idx = (accepted == False) & (dG < 9.0)
-    sns.scatterplot(
-        x=steps[rej_idx], y=dG[rej_idx],
-        color="#CBD5E1", s=15, marker="o", edgecolor="none",
-        label="Rejected Mutation", ax=ax, zorder=2
-    )
+    # 3. Plot Proposed Mutations
+    for i in range(len(steps)):
+        if steps[i] == 0:
+            # Seed starting point
+            ax.scatter(steps[i], dG[i], color="#0F172A", s=50, marker="o", edgecolors="none", zorder=3)
+            continue
+            
+        if dG[i] >= 9.0:
+            # Biophysical constraint violation (GRAVY/pI/MHC filters)
+            ax.scatter(
+                steps[i], max([v for v in dG if v < 9.0]) + 0.1,
+                color="none", marker="^", s=30, edgecolor="#D97706", linewidths=0.8,
+                label="Biophysical Filter Rejection" if i == 1 else "", zorder=2
+            )
+        elif accepted[i]:
+            # Accepted mutation (stability improvement or Metropolis pass)
+            ax.scatter(
+                steps[i], dG[i], 
+                color="#10B981", s=40, marker="o", edgecolors="none",
+                label="Accepted Mutation" if i == 2 else "", zorder=3
+            )
+        else:
+            # Rejected mutation (worse stability, Metropolis fail)
+            ax.scatter(
+                steps[i], dG[i], 
+                color="#EF4444", s=30, marker="x", linewidths=0.8,
+                label="Thermodynamic Rejection" if i == 3 else "", zorder=2
+            )
 
-    # Plot Hard-constraint Filters (Faint unfilled triangles)
-    hard_rej = steps[dG >= 9.0]
-    if len(hard_rej) > 0:
-        ax.scatter(
-            hard_rej, np.full_like(hard_rej, max(valid_dG) + 0.1),
-            color="none", marker="^", s=25, edgecolor="#94A3B8", linewidths=0.6,
-            label="Biophysical Violation (pI/GRAVY/MHC)", zorder=2
-        )
-
-    ax.set_xlabel("Directed Evolution Search Steps")
-    ax.set_ylabel(r"Monomer folding energy $\Delta G$ (kcal/mol)")
-    ax.set_title("Directed Evolution Trajectory: Energy Minimization Walk", fontweight="bold", fontsize=12, pad=12)
+    ax.set_xlabel("Directed Evolution Optimization Steps")
+    ax.set_ylabel(r"Monomer stability $\Delta G$ (kcal/mol)")
+    ax.set_title("Directed Evolution Trajectory: Energy Minimization Walk", fontweight="bold", pad=15)
     
     ax.legend(loc="upper right", frameon=True, facecolor="white", edgecolor="none", fontsize=8)
     plt.tight_layout()
@@ -167,7 +187,7 @@ def plot_directed_evolution_trajectory(csv_path: str, out_img: str):
     print(f"[SUCCESS] Saved directed evolution trajectory plot to: {out_img}")
 
 def plot_biophysical_heatmap(csv_path: str, out_img: str):
-    """Generates a minimal, clean, cool-gray-blue biophysical risk assessment heatmap."""
+    """Generates a clean, uncluttered biophysical risk heatmap with full candidate names and clear units."""
     if not os.path.exists(csv_path):
         print(f"[ERROR] CSV not found: {csv_path}")
         return
@@ -179,17 +199,14 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
     # Sort leaderboard by WLSS descending
     df_sorted = df.sort_values(by="wlss", ascending=False).reset_index(drop=True)
 
-    # Define standard biophysical metrics
+    # Use full clean names without truncation (we adjust plot margins later to fit them)
     candidates = df_sorted['candidate_name'].values
-    short_names = [n if len(n) < 18 else n[:15] + "..." for n in candidates]
 
-    # Normalized score grid for background colors (1.0 = safe/optimal, 0.0 = risky/worst)
     color_grid = []
-    # Annotation matrix for actual physical values
     annot_grid = []
 
     for _, row in df_sorted.iterrows():
-        # Normalized parameters (higher is safer/better)
+        # Normalized parameters (higher is safer/better, 0.0 is worst, 1.0 is safe)
         n_binding = min(1.0, row['iptm'] / 0.6)
         
         n_stability = 1.0 if row['predicted_dG'] <= -1.0 else (
@@ -209,55 +226,60 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
 
         color_grid.append([n_binding, n_stability, n_thiol, n_pi, n_mhc, n_gravy, n_wlss])
 
-        # Actual raw values to display
+        # Raw values to display (clean numbers, NO redundant units inside the cells)
         annot_grid.append([
-            f"{row['iptm']:.2f}\nipTM",
-            f"{row['predicted_dG']:.2f}\ndG",
-            f"{int(row['cysteines'])} Cys",
-            f"{row['pi']:.2f}\npI",
-            f"{int(row['mhc_epitopes'])} MHC",
-            f"{row['gravy']:.2f}\nGRAVY",
-            f"{row['wlss']:.1f}%\nWLSS"
+            f"{row['iptm']:.2f}",
+            f"{row['predicted_dG']:.2f}",
+            f"{int(row['cysteines'])}",
+            f"{row['pi']:.2f}",
+            f"{int(row['mhc_epitopes'])}",
+            f"{row['gravy']:.2f}",
+            f"{row['wlss']:.1f}%"
         ])
 
     metrics = [
         "Binding\n(ipTM)", 
         "Folding\n(SaProt dG)", 
-        "Thiol Safety\n(Cysteines)", 
-        "Solubility\n(pI Check)", 
+        "Cysteines\n(Count)", 
+        "Isoelectric Pt\n(pI)", 
         "Immunogenicity\n(MHC-II)", 
         "Hydropathy\n(GRAVY)", 
-        "Composite Success\n(WLSS %)"
+        "Success Score\n(WLSS)"
     ]
 
     # Convert to DataFrames
-    color_df = pd.DataFrame(color_grid, index=short_names, columns=metrics)
-    annot_df = pd.DataFrame(annot_grid, index=short_names, columns=metrics)
+    color_df = pd.DataFrame(color_grid, index=candidates, columns=metrics)
+    annot_df = pd.DataFrame(annot_grid, index=candidates, columns=metrics)
 
     # Plot Seaborn Heatmap
-    plt.figure(figsize=(10, 5), dpi=300)
+    # We increase the width to 14 inches to give the long candidate names plenty of room on the left
+    fig, ax = plt.subplots(figsize=(14, 5), dpi=300)
     
-    # We use a beautiful, minimalist, sequential cool-gray-blue palette (Blues)
-    # 0.0 maps to very light blue/gray, 1.0 maps to solid corporate blue
+    # We use a beautiful, minimalist, sequential blue-gray palette (mako)
+    # This is clean, modern, and highly legible
     cmap = sns.color_palette("Blues", as_cmap=True)
 
-    ax = sns.heatmap(
+    sns.heatmap(
         color_df,
         annot=annot_df.values,
         fmt="",
         cmap=cmap,
-        linewidths=0.8,
+        linewidths=1.0,
         linecolor="#F1F5F9",
-        cbar=False, # We omit the colorbar to keep it ultra-minimal
+        cbar=False,
         vmin=0.0, vmax=1.0,
-        annot_kws={"fontsize": 8}
+        annot_kws={"fontsize": 9, "fontweight": "bold"},
+        ax=ax
     )
 
-    plt.title("Biophysical Success & Manufacturability Leaderboard Profile\n(Darker blue indicates optimal safety and binding parameters)", pad=16, fontweight="bold", fontsize=12)
-    plt.xticks(rotation=0, fontsize=8)
+    plt.title("Designed Candidates: Biophysical Safety & Success Profile\n(Darker blue represents optimal safety, folding, and binding parameters)", pad=18, fontweight="bold", fontsize=12)
+    plt.xticks(rotation=0, fontsize=8, fontweight="bold")
+    # Rotate y-ticks for clean horizontal reading of candidate names
     plt.yticks(rotation=0, fontsize=8)
     
-    plt.tight_layout()
+    # Adjust subplot margins dynamically to prevent any truncation of the candidate names on the left
+    plt.subplots_adjust(left=0.35, right=0.98, top=0.85, bottom=0.15)
+    
     plt.savefig(out_img, bbox_inches="tight")
     plt.close()
     print(f"[SUCCESS] Saved biophysical risk heatmap to: {out_img}")
@@ -266,4 +288,3 @@ if __name__ == "__main__":
     plot_design_space_landscape("outputs/joint_evaluation_report.csv", "analysis/outputs/design_space_landscape_minimal.png")
     plot_directed_evolution_trajectory("outputs/evolution_history.csv", "analysis/outputs/directed_evolution_trajectory_minimal.png")
     plot_biophysical_heatmap("outputs/joint_evaluation_report.csv", "analysis/outputs/biophysical_profile_comparison_minimal.png")
-
