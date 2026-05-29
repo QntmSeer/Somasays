@@ -298,4 +298,5 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
 if __name__ == "__main__":
     plot_design_space_landscape("outputs/joint_evaluation_report.csv", "analysis/outputs/design_space_landscape_minimal.png")
     plot_directed_evolution_trajectory("outputs/evolution_history.csv", "analysis/outputs/directed_evolution_trajectory_minimal.png")
-    plot_biophysical_heatmap("outputs/joint_evaluation_report.csv", "analysis/outputs/biophysical_profile_comparison_minimal.png")
+    plot_biophysical_heatmap("outputs/joint_evaluation_report.csv", "analysis/outputs/biophysical_profile_heatmap.png")
+
