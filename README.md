@@ -205,17 +205,11 @@ Our detailed benchmarking indicates that combining **bfloat16 AMP** with **Flash
 
 For a publication-grade breakdown of our findings, GPU hardware profiles, and optimization methodologies, read our full [ESM3 Optimization and Performance Case Study](optimizations_case_study.md).
 
-### Performance Metrics Charts
-
-| Latency Comparison | Memory Footprint | Throughput (Tokens/s) |
-| :---: | :---: | :---: |
-| ![Latency](analysis/outputs/latency_comparison.png) | ![Memory](analysis/outputs/memory_comparison.png) | ![Throughput](analysis/outputs/throughput_comparison.png) |
-
 ### Scientific Validation & Design Space Charts
 
-| Design Space Landscape | Directed Evolution Trajectory | Biophysical Risk Comparison |
+| Design Space Landscape | Directed Evolution Trajectory | Biophysical Heatmap Leaderboard |
 | :---: | :---: | :---: |
-| ![Design Space](analysis/outputs/design_space_landscape.png) | ![Evolution Trajectory](analysis/outputs/directed_evolution_trajectory.png) | ![Biophysical Comparison](analysis/outputs/biophysical_profile_comparison.png) |
+| ![Design Space](analysis/outputs/design_space_landscape.png) | ![Evolution Trajectory](analysis/outputs/directed_evolution_trajectory.png) | ![Biophysical Heatmap](analysis/outputs/biophysical_profile_comparison.png) |
 
 ---
 

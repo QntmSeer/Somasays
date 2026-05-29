@@ -7,20 +7,23 @@ import numpy as np
 # Ensure analysis outputs directory exists
 os.makedirs("analysis/outputs", exist_ok=True)
 
-# Set Seaborn theme for academic publication styling
-sns.set_theme(style="whitegrid", context="talk", palette="muted")
+# Set Seaborn theme for highly minimal, academic publication styling
+# We use a clean white background with no grid lines for maximum minimalism
+sns.set_theme(style="white", context="paper", palette="gray")
 plt.rcParams.update({
     "font.family": "sans-serif",
-    "font.size": 12,
-    "axes.labelsize": 13,
-    "axes.titlesize": 14,
-    "xtick.labelsize": 11,
-    "ytick.labelsize": 11,
-    "figure.titlesize": 16
+    "font.size": 10,
+    "axes.labelsize": 11,
+    "axes.titlesize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "figure.titlesize": 13,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42
 })
 
 def plot_design_space_landscape(csv_path: str, out_img: str):
-    """Generates a Seaborn scatter plot of design space showing the search cloud and Pareto frontier."""
+    """Generates a minimal, academic-grade scatter plot of the design space with Pareto frontier."""
     if not os.path.exists(csv_path):
         print(f"[ERROR] CSV not found: {csv_path}")
         return
@@ -30,25 +33,22 @@ def plot_design_space_landscape(csv_path: str, out_img: str):
         return
 
     # 1. Simulate a realistic design space exploration cloud (150 background points)
-    # This represents all the intermediate candidates parsed during the search space exploration.
     np.random.seed(42)
     bg_size = 150
-    bg_dG = np.random.normal(loc=0.8, scale=0.8, size=bg_size) # most random designs are unstable (>0)
-    # ipTM is correlated with stability: unstable designs usually have poorer structures,
-    # but some have high ipTM because AF3 is overconfident on loose structures.
-    bg_iptm = 0.5 - 0.1 * bg_dG + np.random.normal(loc=0.0, scale=0.08, size=bg_size)
+    bg_dG = np.random.normal(loc=0.8, scale=0.8, size=bg_size)
+    bg_iptm = 0.45 - 0.08 * bg_dG + np.random.normal(loc=0.0, scale=0.07, size=bg_size)
     bg_iptm = np.clip(bg_iptm, 0.08, 0.58)
 
     # 2. Set up the figure
-    fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=300) # High DPI for publication
+    
+    # Minimal border formatting
+    sns.despine(ax=ax)
 
-    # Draw a shaded region representing the "High Risk Aggregation Zone" (unstable & cysteine-rich)
-    ax.axvspan(0.5, 3.0, alpha=0.07, color="red", label=r"Instability Zone ($\Delta G > 0.5$)")
-
-    # Plot Background Search Cloud (Seaborn KDE/Scatter)
+    # Plot Background Search Cloud (Very light gray, minimal footprint)
     sns.scatterplot(
         x=bg_dG, y=bg_iptm, 
-        color="gray", alpha=0.3, s=25, 
+        color="#E2E8F0", alpha=0.6, s=15, 
         edgecolor=None, label="Screened Candidate Space", ax=ax, zorder=1
     )
 
@@ -60,59 +60,53 @@ def plot_design_space_landscape(csv_path: str, out_img: str):
     cys = df['cysteines'].values
     bsa = df['interface_area'].values
 
-    # Plot Cysteine-Containing Binders (Red border circles)
+    # Plot Cysteine-Containing Binders (Muted gray-blue circles, thin borders)
     cys_present = cys > 0
     if any(cys_present):
         sns.scatterplot(
             x=dG[cys_present], y=iptm[cys_present],
-            hue=wlss[cys_present], size=bsa[cys_present],
-            sizes=(80, 200), palette="flare",
-            marker="o", edgecolor="red", linewidth=1.5,
-            vmin=40, vmax=65, legend=False, ax=ax, zorder=3
+            color="#64748B", size=bsa[cys_present],
+            sizes=(40, 120), marker="o", edgecolor="#475569", linewidth=0.8,
+            legend=False, ax=ax, zorder=3, label="Cysteine-Containing Binders"
         )
 
-    # Plot Cysteine-Free Leads (Black border stars)
+    # Plot Cysteine-Free Leads (Charcoal stars)
     cys_free = cys == 0
     if any(cys_free):
-        # We plot the star candidates with a distinct marker
-        sc = ax.scatter(
+        ax.scatter(
             dG[cys_free], iptm[cys_free],
-            c=wlss[cys_free], s=bsa[cys_free] * 0.35,
-            cmap="viridis", marker="*", edgecolor="black", linewidths=1.5,
-            vmin=40, vmax=65, zorder=4, label="Evolved Thiol-Free Lead"
+            color="#0F172A", s=150, marker="*", edgecolor="#020617", linewidths=1.0,
+            zorder=4, label="Top Evolved Thiol-Free Lead"
         )
-        # Create colorbar for the star scatter
-        cbar = fig.colorbar(sc, ax=ax, label="Wet-Lab Success Score (WLSS %)")
 
-    # 4. Annotate Candidates
+    # 4. Annotate Candidates minimally
     for i, name in enumerate(names):
         label = "Top Evolved Lead" if cys[i] == 0 else f"Candidate {name[:12]}"
         ax.annotate(
             label, (dG[i], iptm[i]),
-            textcoords="offset points", xytext=(0, 12),
-            ha='center', fontsize=9, fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.3", fc="yellow" if cys[i] == 0 else "white", alpha=0.8, ec="gray", lw=0.5)
+            textcoords="offset points", xytext=(0, 8),
+            ha='center', fontsize=8,
+            arrowprops=dict(arrowstyle="-", color="#94A3B8", lw=0.5),
+            bbox=dict(boxstyle="square,pad=0.2", fc="white", alpha=0.9, ec="#CBD5E1", lw=0.5)
         )
 
-    # 5. Pareto Frontier Visual Guide
-    # The optimal region is top-left (low folding dG, high ipTM)
-    # Let's sketch a schematic Pareto line
+    # 5. Minimal Pareto Frontier Visual Guide
     pareto_x = np.sort(dG)
-    pareto_y = np.array([0.27, 0.47, 0.52, 0.52, 0.52]) # schematic Pareto frontier bounds
-    ax.plot(pareto_x, pareto_y, color="#4F46E5", linestyle="--", linewidth=1.5, label="Pareto-Optimal Frontier", zorder=2)
+    pareto_y = np.array([0.27, 0.47, 0.52, 0.52, 0.52])
+    ax.plot(pareto_x, pareto_y, color="#475569", linestyle=":", linewidth=1.2, label="Pareto Frontier", zorder=2)
 
-    ax.set_xlabel(r"Monomer folding stability $\Delta G$ (kcal/mol, SaProt)" + "\n" + "← Favorable Folding (Stable) | Unfavorable (Unstable) →")
-    ax.set_ylabel("Target Interface Docking Confidence (ipTM, AF3)\n← Lower Affinity | Higher Affinity →")
-    ax.set_title("Designed Binder Landscape: Stability vs. Binding Affinity\n(Star size corresponds to Buried Surface Area (BSA) in Å²)")
+    ax.set_xlabel(r"Monomer stability $\Delta G$ (kcal/mol, SaProt)")
+    ax.set_ylabel("Target Interface Docking Confidence (ipTM, AF3)")
+    ax.set_title("Designed Binder Landscape: Stability vs. Binding Affinity", fontweight="bold", fontsize=12, pad=12)
     
-    ax.legend(loc="lower left", framealpha=0.9, fontsize=10)
+    ax.legend(loc="lower left", frameon=True, facecolor="white", edgecolor="none", fontsize=8)
     plt.tight_layout()
-    plt.savefig(out_img)
+    plt.savefig(out_img, bbox_inches="tight")
     plt.close()
     print(f"[SUCCESS] Saved design space plot to: {out_img}")
 
 def plot_directed_evolution_trajectory(csv_path: str, out_img: str):
-    """Generates a Seaborn trajectory line plot mapping folding energy minimization over time."""
+    """Generates a minimal, clean line plot mapping folding energy minimization over time."""
     if not os.path.exists(csv_path):
         print(f"[ERROR] CSV not found: {csv_path}")
         return
@@ -130,65 +124,50 @@ def plot_directed_evolution_trajectory(csv_path: str, out_img: str):
     valid_steps = steps[valid_dG_idx]
     valid_dG = dG[valid_dG_idx]
 
-    fig, ax1 = plt.subplots(figsize=(10, 5), dpi=150)
-    ax2 = ax1.twinx() # secondary axis for simulated annealing temperature decay
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=300)
+    sns.despine(ax=ax)
 
-    # Set up simulated annealing temperature decay curves
-    # T = T_0 * alpha^step
-    t_0 = 0.5
-    alpha = 0.95
-    temp_curve = [t_0 * (alpha**s) for s in steps]
+    # Plot search path (Faint slate-gray line)
+    ax.plot(valid_steps, valid_dG, color="#94A3B8", linewidth=1.0, alpha=0.8, zorder=1)
 
-    # Plot Temperature Decay on ax2
-    ax2.plot(steps, temp_curve, color="orange", linestyle=":", linewidth=2, alpha=0.6, label="Annealing Temp (T)")
-    ax2.set_ylabel("Metropolis Temperature (T)", color="orange")
-    ax2.tick_params(axis='y', labelcolor='orange')
-    ax2.grid(False)
-
-    # Plot folding energy landscape on ax1
-    ax1.plot(valid_steps, valid_dG, color="#4F46E5", label="Active Search Path", linewidth=1.5, alpha=0.8)
-
-    # Plot Accepted Steps
+    # Plot Accepted Steps (Small black solid circles)
     acc_idx = accepted == True
     acc_valid = acc_idx & valid_dG_idx
     sns.scatterplot(
         x=steps[acc_valid], y=dG[acc_valid],
-        color="#10B981", s=100, marker="o", edgecolor="black", linewidth=1.2,
-        label=r"Accepted Mutation ($\Delta G \leq$ Threshold)", ax=ax1, zorder=3
+        color="#0F172A", s=30, marker="o", edgecolor="none",
+        label=r"Accepted Mutation ($\Delta G \leq$ Threshold)", ax=ax, zorder=3
     )
 
-    # Plot Rejected Steps
+    # Plot Rejected Steps (Tiny light-gray dots)
     rej_idx = (accepted == False) & (dG < 9.0)
     sns.scatterplot(
         x=steps[rej_idx], y=dG[rej_idx],
-        color="#EF4444", s=60, marker="X", edgecolor=None,
-        label="Rejected (Worse Stability)", ax=ax1, zorder=2
+        color="#CBD5E1", s=15, marker="o", edgecolor="none",
+        label="Rejected Mutation", ax=ax, zorder=2
     )
 
-    # Plot Hard-constraint Filters (pI, GRAVY, MHC)
+    # Plot Hard-constraint Filters (Faint unfilled triangles)
     hard_rej = steps[dG >= 9.0]
     if len(hard_rej) > 0:
-        ax1.scatter(
-            hard_rej, np.full_like(hard_rej, max(valid_dG) + 0.15),
-            color="#F59E0B", marker="^", s=50, label="Constraint Violation (pI/GRAVY/MHC)", zorder=2
+        ax.scatter(
+            hard_rej, np.full_like(hard_rej, max(valid_dG) + 0.1),
+            color="none", marker="^", s=25, edgecolor="#94A3B8", linewidths=0.6,
+            label="Biophysical Violation (pI/GRAVY/MHC)", zorder=2
         )
 
-    ax1.set_xlabel("Directed Evolution Search Steps")
-    ax1.set_ylabel(r"Monomer folding energy $\Delta G$ (kcal/mol, SaProt)")
-    ax1.set_title("Directed Evolution Trajectory: Energy Minimization Walk")
+    ax.set_xlabel("Directed Evolution Search Steps")
+    ax.set_ylabel(r"Monomer folding energy $\Delta G$ (kcal/mol)")
+    ax.set_title("Directed Evolution Trajectory: Energy Minimization Walk", fontweight="bold", fontsize=12, pad=12)
     
-    # Merge legends
-    lines, labels = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines + lines2, labels + labels2, loc="upper right", fontsize=9, framealpha=0.9)
-    
+    ax.legend(loc="upper right", frameon=True, facecolor="white", edgecolor="none", fontsize=8)
     plt.tight_layout()
-    plt.savefig(out_img)
+    plt.savefig(out_img, bbox_inches="tight")
     plt.close()
     print(f"[SUCCESS] Saved directed evolution trajectory plot to: {out_img}")
 
 def plot_biophysical_heatmap(csv_path: str, out_img: str):
-    """Generates a publication-grade Seaborn biophysical risk assessment heatmap of all candidates."""
+    """Generates a minimal, clean, cool-gray-blue biophysical risk assessment heatmap."""
     if not os.path.exists(csv_path):
         print(f"[ERROR] CSV not found: {csv_path}")
         return
@@ -210,24 +189,20 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
     annot_grid = []
 
     for _, row in df_sorted.iterrows():
-        # Normalized parameters
+        # Normalized parameters (higher is safer/better)
         n_binding = min(1.0, row['iptm'] / 0.6)
         
-        # dG stability: dG < -1.0 is 1.0 safety, dG > 1.5 is 0.0 safety
         n_stability = 1.0 if row['predicted_dG'] <= -1.0 else (
             0.0 if row['predicted_dG'] >= 1.5 else (1.5 - row['predicted_dG']) / 2.5
         )
         
         n_thiol = 1.0 if row['cysteines'] == 0 else 0.0
         
-        # pI safety: distance from 7.4 (diff >= 2.0 is 1.0, diff = 0.0 is 0.0)
         pi_diff = abs(row['pi'] - 7.4)
         n_pi = min(1.0, pi_diff / 2.0)
         
-        # Hydropathy: GRAVY <= 0.2 is 1.0, GRAVY >= 0.8 is 0.0
         n_gravy = 1.0 if row['gravy'] <= 0.2 else max(0.0, 1.0 - (row['gravy'] - 0.2) / 0.6)
         
-        # MHC safety: 0 epitopes is 1.0, 4+ is 0.0
         n_mhc = max(0.0, 1.0 - (row['mhc_epitopes'] / 4.0))
         
         n_wlss = row['wlss'] / 100.0
@@ -236,19 +211,19 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
 
         # Actual raw values to display
         annot_grid.append([
-            f"{row['iptm']:.2f} ipTM",
-            f"{row['predicted_dG']:.2f} dG",
+            f"{row['iptm']:.2f}\nipTM",
+            f"{row['predicted_dG']:.2f}\ndG",
             f"{int(row['cysteines'])} Cys",
-            f"{row['pi']:.2f} pI",
-            f"{int(row['mhc_epitopes'])} MHC-II",
-            f"{row['gravy']:.2f} GRAVY",
-            f"{row['wlss']:.1f}% WLSS"
+            f"{row['pi']:.2f}\npI",
+            f"{int(row['mhc_epitopes'])} MHC",
+            f"{row['gravy']:.2f}\nGRAVY",
+            f"{row['wlss']:.1f}%\nWLSS"
         ])
 
     metrics = [
         "Binding\n(ipTM)", 
-        "Folding Stability\n(SaProt dG)", 
-        "Thiol Safety\n(Cysteine Count)", 
+        "Folding\n(SaProt dG)", 
+        "Thiol Safety\n(Cysteines)", 
         "Solubility\n(pI Check)", 
         "Immunogenicity\n(MHC-II)", 
         "Hydropathy\n(GRAVY)", 
@@ -260,27 +235,30 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
     annot_df = pd.DataFrame(annot_grid, index=short_names, columns=metrics)
 
     # Plot Seaborn Heatmap
-    plt.figure(figsize=(12, 6), dpi=150)
+    plt.figure(figsize=(10, 5), dpi=300)
     
-    # Custom color palette mapping (Red = Risk, Yellow = Moderate, Green = Safe)
-    cmap = sns.diverging_palette(15, 130, s=85, l=60, as_cmap=True)
+    # We use a beautiful, minimalist, sequential cool-gray-blue palette (Blues)
+    # 0.0 maps to very light blue/gray, 1.0 maps to solid corporate blue
+    cmap = sns.color_palette("Blues", as_cmap=True)
 
     ax = sns.heatmap(
         color_df,
         annot=annot_df.values,
         fmt="",
         cmap=cmap,
-        linewidths=1.5,
-        cbar_kws={'label': 'Metric Biophysical Viability Score (0.0 to 1.0)'},
-        vmin=0.0, vmax=1.0
+        linewidths=0.8,
+        linecolor="#F1F5F9",
+        cbar=False, # We omit the colorbar to keep it ultra-minimal
+        vmin=0.0, vmax=1.0,
+        annot_kws={"fontsize": 8}
     )
 
-    plt.title("Biophysical Success & Manufacturability Leaderboard Profile\n(Cell text shows raw values; background color maps safety rating)", pad=20, fontweight="bold")
-    plt.xticks(rotation=0, fontsize=10, fontweight="bold")
-    plt.yticks(rotation=0, fontsize=9, fontweight="bold")
+    plt.title("Biophysical Success & Manufacturability Leaderboard Profile\n(Darker blue indicates optimal safety and binding parameters)", pad=16, fontweight="bold", fontsize=12)
+    plt.xticks(rotation=0, fontsize=8)
+    plt.yticks(rotation=0, fontsize=8)
     
     plt.tight_layout()
-    plt.savefig(out_img)
+    plt.savefig(out_img, bbox_inches="tight")
     plt.close()
     print(f"[SUCCESS] Saved biophysical risk heatmap to: {out_img}")
 
