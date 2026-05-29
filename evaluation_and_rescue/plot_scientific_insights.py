@@ -203,16 +203,15 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
     candidates = df_sorted['candidate_name'].values
     clean_names = []
     for name in candidates:
-        if "cysteine_free" in name or "041" in name:
-            clean_names.append("somasays_lead_041 (Thiol-Free)")
+        if "041" in name:
+            clean_names.append("Lead 041")
         else:
-            name_clean = name.replace("fold_", "")
+            name_clean = name.replace("fold_", "").replace("candidate_", "")
             parts = name_clean.split("_")
-            if len(parts) >= 4:
-                # E.g. "2026_05_20_01_13" -> "candidate_2026_05_20_0113"
-                clean_names.append(f"candidate_{'_'.join(parts[:-2])}_{parts[-2]}{parts[-1]}")
+            if len(parts) >= 2:
+                clean_names.append(f"Cand {parts[-2]}{parts[-1]}")
             else:
-                clean_names.append(name)
+                clean_names.append(name_clean)
 
     color_grid = []
     annot_grid = []
@@ -251,12 +250,12 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
 
     metrics = [
         "Binding\n(ipTM)", 
-        "Folding\n(SaProt dG)", 
-        "Cysteines\n(Count)", 
-        "Isoelectric Pt\n(pI)", 
-        "Immunogenicity\n(MHC-II)", 
-        "Hydropathy\n(GRAVY)", 
-        "Success Score\n(WLSS)"
+        "Folding\n(dG)", 
+        "Cysteines", 
+        "pI", 
+        "MHC-II", 
+        "GRAVY", 
+        "WLSS"
     ]
 
     # Convert to DataFrames
@@ -264,8 +263,8 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
     annot_df = pd.DataFrame(annot_grid, index=clean_names, columns=metrics)
 
     # Plot Seaborn Heatmap
-    # We use (10, 5) with square=True to make the cells perfectly square and clean
-    fig, ax = plt.subplots(figsize=(10, 5), dpi=300)
+    # We increase the width to 11 inches to give columns more breathing room and prevent overlaps
+    fig, ax = plt.subplots(figsize=(11, 5), dpi=300)
     
     # Minimal blue sequential colormap
     cmap = sns.color_palette("Blues", as_cmap=True)
@@ -280,16 +279,16 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
         cbar=False,
         vmin=0.0, vmax=1.0,
         square=True,
-        annot_kws={"fontsize": 9, "fontweight": "bold"},
+        annot_kws={"fontsize": 8, "fontweight": "bold"},
         ax=ax
     )
 
-    plt.title("Designed Candidates: Biophysical Safety & Success Profile\n(Darker blue represents optimal safety, folding, and binding parameters)", pad=16, fontweight="bold", fontsize=11)
+    ax.set_title("Designed Candidates: Biophysical Safety & Success Profile\n(Darker blue represents optimal safety, folding, and binding parameters)", pad=16, fontweight="bold", fontsize=10, loc="center")
     plt.xticks(rotation=0, fontsize=8, fontweight="bold")
     plt.yticks(rotation=0, fontsize=8, fontweight="bold")
     
-    # We adjust padding, and use bbox_inches="tight" on save to make it perfect
-    plt.subplots_adjust(left=0.25, right=0.98, top=0.85, bottom=0.15)
+    # We adjust padding with a smaller left margin now that candidate names are minimal
+    plt.subplots_adjust(left=0.12, right=0.98, top=0.85, bottom=0.15)
     
     plt.savefig(out_img, bbox_inches="tight")
     plt.close()
