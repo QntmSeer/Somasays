@@ -187,7 +187,7 @@ def plot_directed_evolution_trajectory(csv_path: str, out_img: str):
     print(f"[SUCCESS] Saved directed evolution trajectory plot to: {out_img}")
 
 def plot_biophysical_heatmap(csv_path: str, out_img: str):
-    """Generates a clean, uncluttered biophysical risk heatmap with full candidate names and clear units."""
+    """Generates a minimal, clean, cool-gray-blue biophysical risk heatmap with uniform name alignment."""
     if not os.path.exists(csv_path):
         print(f"[ERROR] CSV not found: {csv_path}")
         return
@@ -199,8 +199,20 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
     # Sort leaderboard by WLSS descending
     df_sorted = df.sort_values(by="wlss", ascending=False).reset_index(drop=True)
 
-    # Use full clean names without truncation (we adjust plot margins later to fit them)
+    # Use clean, uniform-length names to prevent uneven y-axis alignment gaps
     candidates = df_sorted['candidate_name'].values
+    clean_names = []
+    for name in candidates:
+        if "cysteine_free" in name or "041" in name:
+            clean_names.append("somasays_lead_041 (Thiol-Free)")
+        else:
+            name_clean = name.replace("fold_", "")
+            parts = name_clean.split("_")
+            if len(parts) >= 4:
+                # E.g. "2026_05_20_01_13" -> "candidate_2026_05_20_0113"
+                clean_names.append(f"candidate_{'_'.join(parts[:-2])}_{parts[-2]}{parts[-1]}")
+            else:
+                clean_names.append(name)
 
     color_grid = []
     annot_grid = []
@@ -248,15 +260,14 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
     ]
 
     # Convert to DataFrames
-    color_df = pd.DataFrame(color_grid, index=candidates, columns=metrics)
-    annot_df = pd.DataFrame(annot_grid, index=candidates, columns=metrics)
+    color_df = pd.DataFrame(color_grid, index=clean_names, columns=metrics)
+    annot_df = pd.DataFrame(annot_grid, index=clean_names, columns=metrics)
 
     # Plot Seaborn Heatmap
-    # We increase the width to 14 inches to give the long candidate names plenty of room on the left
-    fig, ax = plt.subplots(figsize=(14, 5), dpi=300)
+    # We use (10, 5) with square=True to make the cells perfectly square and clean
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=300)
     
-    # We use a beautiful, minimalist, sequential blue-gray palette (mako)
-    # This is clean, modern, and highly legible
+    # Minimal blue sequential colormap
     cmap = sns.color_palette("Blues", as_cmap=True)
 
     sns.heatmap(
@@ -268,17 +279,17 @@ def plot_biophysical_heatmap(csv_path: str, out_img: str):
         linecolor="#F1F5F9",
         cbar=False,
         vmin=0.0, vmax=1.0,
+        square=True,
         annot_kws={"fontsize": 9, "fontweight": "bold"},
         ax=ax
     )
 
-    plt.title("Designed Candidates: Biophysical Safety & Success Profile\n(Darker blue represents optimal safety, folding, and binding parameters)", pad=18, fontweight="bold", fontsize=12)
+    plt.title("Designed Candidates: Biophysical Safety & Success Profile\n(Darker blue represents optimal safety, folding, and binding parameters)", pad=16, fontweight="bold", fontsize=11)
     plt.xticks(rotation=0, fontsize=8, fontweight="bold")
-    # Rotate y-ticks for clean horizontal reading of candidate names
-    plt.yticks(rotation=0, fontsize=8)
+    plt.yticks(rotation=0, fontsize=8, fontweight="bold")
     
-    # Adjust subplot margins dynamically to prevent any truncation of the candidate names on the left
-    plt.subplots_adjust(left=0.35, right=0.98, top=0.85, bottom=0.15)
+    # We adjust padding, and use bbox_inches="tight" on save to make it perfect
+    plt.subplots_adjust(left=0.25, right=0.98, top=0.85, bottom=0.15)
     
     plt.savefig(out_img, bbox_inches="tight")
     plt.close()
