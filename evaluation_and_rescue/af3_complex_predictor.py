@@ -3,11 +3,27 @@ import os
 import argparse
 import glob
 
-# Production Viral Targets Database
-VIRAL_TARGETS = {
-    "COVID_SPIKE_RBD": "RVQPTESIVRFPNITNLCPFGEVFNATRFASVYAWNRKRISNCVADYSVLYNSASFSTFKCYGVSPTKLNDLCFTNVYADSFVIRGDEVRQIAPGQTGKIADYNYKLPDDFTGCVIAWNSNNLDSKVGGNYNYLYRLFRKSNLKPFERDISTEIYQAGSTPCNGVEGFNCYFPLQSYGFQPTNGVGYQPYRVVVLSFELLHAPATVCGPKKST",
-    "HANTAVIRUS_GN": "SLGTLVLLCSHLTLVQGQGKSIVDPTDGFVTSSQSLIVTRATPGTPNLIHIECSTGLLTAHCKSTQQINSKQLLGCAFCGGTLNVSPEFGDTVSTKCK",
-    "INFLUENZA_HA": "DTICIGYHANNSTDTVDTVLEKNVTVTHSVNLLEDKHNGKLCKLRGVAPLHLGKCNIAGWILGNPECESLSTASSWSYIVETPSSDNGTCYPGDFIDYEELREQLSSVSSFERFEIFPKTSSWPNHDSNKGVTAACPHAGAKSFYKNLIWLVKKGNSYPKLSKSYINDKGKEVLVLWGIHHPSTSADQQSLYQNADAYVFVGSSRYSKKFKPEIAIRPKVRDQEGRMNYYWTLVEPGDKITFEATGNLVVPRYAFAMERNAGSGIIISDTPVHDCNTTCQTPKGAINTSLPFQNIHPITIGKCPKYVKSTKLRLATGLRNVPSIQSR"
+# Production Targets Database (supporting single targets and multi-chain complexes like antibody Fab)
+TARGETS = {
+    "COVID_SPIKE_RBD": {
+        "type": "single",
+        "seqs": ["RVQPTESIVRFPNITNLCPFGEVFNATRFASVYAWNRKRISNCVADYSVLYNSASFSTFKCYGVSPTKLNDLCFTNVYADSFVIRGDEVRQIAPGQTGKIADYNYKLPDDFTGCVIAWNSNNLDSKVGGNYNYLYRLFRKSNLKPFERDISTEIYQAGSTPCNGVEGFNCYFPLQSYGFQPTNGVGYQPYRVVVLSFELLHAPATVCGPKKST"]
+    },
+    "HANTAVIRUS_GN": {
+        "type": "single",
+        "seqs": ["SLGTLVLLCSHLTLVQGQGKSIVDPTDGFVTSSQSLIVTRATPGTPNLIHIECSTGLLTAHCKSTQQINSKQLLGCAFCGGTLNVSPEFGDTVSTKCK"]
+    },
+    "INFLUENZA_HA": {
+        "type": "single",
+        "seqs": ["DTICIGYHANNSTDTVDTVLEKNVTVTHSVNLLEDKHNGKLCKLRGVAPLHLGKCNIAGWILGNPECESLSTASSWSYIVETPSSDNGTCYPGDFIDYEELREQLSSVSSFERFEIFPKTSSWPNHDSNKGVTAACPHAGAKSFYKNLIWLVKKGNSYPKLSKSYINDKGKEVLVLWGIHHPSTSADQQSLYQNADAYVFVGSSRYSKKFKPEIAIRPKVRDQEGRMNYYWTLVEPGDKITFEATGNLVVPRYAFAMERNAGSGIIISDTPVHDCNTTCQTPKGAINTSLPFQNIHPITIGKCPKYVKSTKLRLATGLRNVPSIQSR"]
+    },
+    "HTN_GN1_FAB": {
+        "type": "antibody",
+        "seqs": [
+            "TGQSLVESGGDLVKPEGSLTLTCTASGFSFSSTHWICWVRQAPGKGLEWIACIYVGNTYDSYYANWAKGRFTISKTSSTTVTLQMTTLTAADTATYFCARSGSVFGVVSLWGPGTLVTVSSGQPKAPSVFPLAPCCGDTPSSTVTLGCLVKGYLPEPVTVTWNSGTLTNGVRTFPSVRQSSGLYSLSSVVSVTSSSQPVTCNVAHPATNTKVDKTVAPSTCSGTKHHHHHH", # Fab Heavy Chain
+            "TGQVLTQTPASVSEPVEGTVTIKCQASQSINNWLSWYQQRPGQPPKLLIYDASTVASGVSSRFKGSGSGTEFTLTISDLECADAATYACQSYGYGISITDNSAFGGGTEVVVRGDPVAPSVLIFPPAADQVATGTVTIVCVANKYFPDVTVTWEVDGTTQTTGIENSKTPQNSADCTYNLSSTLTLTSTQYNSHKEYTCKVTQGTTSVVQSFNRGDC" # Fab Light Chain
+        ]
+    }
 }
 
 def parse_fasta(fasta_path: str) -> tuple:
@@ -23,28 +39,32 @@ def parse_fasta(fasta_path: str) -> tuple:
             sequence += line.strip()
     return seq_id, sequence
 
-def format_for_alphafold3(binder_seq: str, target_seq: str, job_name: str) -> dict:
+def format_for_alphafold3(binder_seq: str, target_seqs: list, job_name: str) -> dict:
     """
     Formulates the strict JSON schema required for submission to the AlphaFold 3 Server.
+    Supports single targets or multi-chain complexes (like antibody Fab heavy + light chains).
     """
+    sequences = [
+        {
+            "proteinChain": {
+                "sequence": binder_seq,
+                "count": 1
+            }
+        }
+    ]
+    for seq in target_seqs:
+        sequences.append({
+            "proteinChain": {
+                "sequence": seq,
+                "count": 1
+            }
+        })
     return {
         "name": job_name,
-        "modelSeeds": [1, 2, 3], # 3 seeds for statistical convergence confidence
-        "sequences": [
-            {
-                "proteinChain": {
-                    "sequence": binder_seq,
-                    "count": 1
-                }
-            },
-            {
-                "proteinChain": {
-                    "sequence": target_seq,
-                    "count": 1
-                }
-            }
-        ]
+        "modelSeeds": [1], # AlphaFold 3 Server limits to a maximum of 1 seed per job
+        "sequences": sequences
     }
+
 
 def batch_generate_af3_jobs(candidates_dir: str, target_name: str, output_dir: str):
     """
@@ -54,13 +74,14 @@ def batch_generate_af3_jobs(candidates_dir: str, target_name: str, output_dir: s
     print("  Somasays AlphaFold 3 Job Packager  ")
     print("==============================================")
 
-    target_seq = VIRAL_TARGETS.get(target_name)
-    if not target_seq:
-        print(f"[ERROR] Target virus '{target_name}' not found in Database.")
-        print(f"Available targets: {list(VIRAL_TARGETS.keys())}")
+    target_entry = TARGETS.get(target_name)
+    if not target_entry:
+        print(f"[ERROR] Target '{target_name}' not found in Database.")
+        print(f"Available targets: {list(TARGETS.keys())}")
         return
 
-    print(f"[*] Target Active: {target_name}")
+    target_seqs = target_entry["seqs"]
+    print(f"[*] Target Active: {target_name} ({target_entry['type']} type)")
     print(f"[*] Scanning source directory: {candidates_dir}")
 
     # Pick up all generated FASTA files
@@ -82,7 +103,7 @@ def batch_generate_af3_jobs(candidates_dir: str, target_name: str, output_dir: s
                 continue
                 
             job_name = f"somasays_{seq_id}_vs_{target_name}"
-            af3_json = format_for_alphafold3(sequence, target_seq, job_name)
+            af3_json = format_for_alphafold3(sequence, target_seqs, job_name)
             
             out_path = os.path.join(output_dir, f"{job_name}.json")
             with open(out_path, 'w') as f:
@@ -111,8 +132,8 @@ if __name__ == "__main__":
         "--target", 
         type=str, 
         default="COVID_SPIKE_RBD", 
-        choices=list(VIRAL_TARGETS.keys()),
-        help="Which viral target sequence to dock against"
+        choices=list(TARGETS.keys()),
+        help="Which viral/antibody target to dock against"
     )
     parser.add_argument(
         "--out_dir", 

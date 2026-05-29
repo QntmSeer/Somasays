@@ -4,9 +4,17 @@
 venv/
 venv_somasays/
 venv_somasays_win/
+venv_local_gpu/
+venv_wsl/
 .venv/
 env/
 ENV/
+
+# Nested Repositories (cloned dependencies)
+ProteinMPNN/
+evaluation_and_rescue/absolute-stability-predictor/
+test_esm3_fold.pdb
+
 
 # Python Cache & Builds
 __pycache__/

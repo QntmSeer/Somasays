@@ -12,6 +12,20 @@ def compute_sequence_embedding(model, sequence: str, device: str) -> np.ndarray:
     """
     Passes the sequence through the ESM3 encoder and averages the tokens to derive a high-dim mean vector.
     """
+    if model is None:
+        vocab_size = 25 # Standard amino acids
+        freq = np.zeros(vocab_size)
+        for aa in sequence:
+            idx = ord(aa) % vocab_size
+            freq[idx] += 1
+        freq = freq / max(len(sequence), 1)
+        
+        # Dynamic high-dim projection
+        np.random.seed(42) # Stable deterministic projection
+        proj_mat = np.random.randn(vocab_size, 512)
+        mean_embedding = freq @ proj_mat
+        return mean_embedding
+
     # Instantiate clean protein object
     protein = ESMProtein(sequence=sequence)
     
@@ -48,6 +62,7 @@ def compute_sequence_embedding(model, sequence: str, device: str) -> np.ndarray:
         mean_embedding = freq @ proj_mat
         
     return mean_embedding
+
 
 def map_topological_landscape(candidates_dir: str, out_image_path: str):
     """
@@ -121,8 +136,7 @@ def map_topological_landscape(candidates_dir: str, out_image_path: str):
         cmap='plasma', 
         s=150, 
         edgecolor='black', 
-        alpha=0.85,
-        shadow=True
+        alpha=0.85
     )
     
     # Add textual labels for individual candidates
