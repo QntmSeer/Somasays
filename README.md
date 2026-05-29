@@ -194,6 +194,21 @@ python evaluation_and_rescue/binding_interface_analyzer.py \
     --binder_chain A
 ```
 
+#### E. Run Carbon-Conscious Codon Optimizer
+Convert the designed peptide amino acid sequence into expression-optimized DNA sequences for target host expression systems (*E. coli* or Human) to maximize protein yield:
+```bash
+python evaluation_and_rescue/codon_optimizer_carbon.py \
+    --in_seq MKARRLAAGLLAAAEEAKKAAPVLA \
+    --host ecoli \
+    --out_file outputs/top_lead_codon_optimized.csv
+```
+
+#### F. Regenerate Academic Visualizations
+Run the Seaborn-based plotting suite to compile and refresh the design space, optimization trajectory, and biophysical heatmap figures:
+```bash
+python evaluation_and_rescue/plot_scientific_insights.py
+```
+
 ---
 
 ## Quantified Performance Gains
