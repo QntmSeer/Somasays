@@ -209,7 +209,7 @@ For a publication-grade breakdown of our findings, GPU hardware profiles, and op
 
 | Design Space Landscape | Directed Evolution Trajectory | Biophysical Heatmap Leaderboard |
 | :---: | :---: | :---: |
-| ![Design Space](analysis/outputs/design_space_landscape.png) | ![Evolution Trajectory](analysis/outputs/directed_evolution_trajectory.png) | ![Biophysical Heatmap](analysis/outputs/biophysical_profile_comparison.png) |
+| ![Design Space](analysis/outputs/design_space_landscape_minimal.png) | ![Evolution Trajectory](analysis/outputs/directed_evolution_trajectory_minimal.png) | ![Biophysical Heatmap](analysis/outputs/biophysical_profile_comparison_minimal.png) |
 
 ---
 
