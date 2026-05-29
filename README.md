@@ -31,6 +31,8 @@ graph TD
     
     subgraph Downstream Evaluation & Serving
         G -->|mpnn_stability_rescue.py| H[ProteinMPNN Sequence Rescue]
+        H -->|manufacturability_profiler.py| I[Biophysical Risk Profiler]
+        I -->|binding_interface_analyzer.py| L[Structural Binding Interface Analyzer]
         G -->|api_service/server.py| J[FastAPI Model Serving API]
         J -->|Asynchronous Background Queue| K[Inference Worker Processes]
     end
@@ -84,6 +86,8 @@ Somasays/
 │   ├── proteinmpnn_rescue.py        # Backbone sequence co-design
 │   ├── mpnn_stability_rescue.py     # Stability optimization scripts
 │   ├── af3_complex_predictor.py     # Builds AF3 structural evaluation JSONs
+│   ├── manufacturability_profiler.py # Biophysical risk assessment profiler
+│   ├── binding_interface_analyzer.py # Parses complexes for contact maps, ipTM & pLDDT
 │   └── umap_embedding_analysis.py   # Synthesized space embedding projection
 ├── analysis/                    # Benchmarking suite & visualizers
 │   ├── benchmark_suite.py           # Auto-sweeps lengths, batch sizes & configs
@@ -142,6 +146,27 @@ uvicorn api_service.server:app --host 0.0.0.0 --port 8000 --reload
   ```bash
   curl "http://localhost:8000/v1/tasks/<task_id>"
   ```
+
+### 5. Downstream Validation & Analysis
+
+#### A. Run Biophysical Manufacturability Profiler
+Evaluate designed candidates for glycosylation traps, deamidation, acid cleavage susceptibility, and GRAVY hydropathy:
+```bash
+python evaluation_and_rescue/manufacturability_profiler.py \
+    --in_dir outputs/mpnn_best_sequences \
+    --out_dir outputs
+```
+This generates a ranked leaderboard in `outputs/manufacturability_summary.md` and `outputs/manufacturability_report.csv`.
+
+#### B. Run Binding Interface & Contact Analyzer
+Parse PDB structural complexes (from AlphaFold 3 or local prediction engines) and confidence JSONs to compute contact maps, hydrogen bonds, salt bridges, pLDDT scores, and ipTM rankings:
+```bash
+python evaluation_and_rescue/binding_interface_analyzer.py \
+    --in_dir outputs/af3_results \
+    --out_dir outputs \
+    --binder_chain A
+```
+This outputs `outputs/binding_leaderboard.csv` ranking candidates by their target binding affinity.
 
 ---
 
