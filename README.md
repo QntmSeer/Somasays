@@ -245,3 +245,7 @@ To elevate Somasays into a fully automated, web-scale biological factory, the fo
 4. **Asynchronous AlphaFold 3 API Loop**:
    * Build a background daemon to automatically submit generated protein coordinates to the AlphaFold 3 server, parse confidence metrics (pLDDT, iPAE), and store results in a PostgreSQL database for real-time downstream validation.
 
+5. **Speculative Speculative Decoding (SSD) / Saguaro Integration**:
+   * Incorporate asynchronous draft-target token co-speculation. Deploy a lightweight sequence draft model (e.g., ESM-2 35M) in parallel with the target ESM3 model using non-blocking PyTorch CUDA streams and Saguaro sampling (top-logit downweighting) to eliminate sequential drafting bottlenecks and accelerate sequence generation by $2\times$ to $3\times$ without quality degradation.
+
+
