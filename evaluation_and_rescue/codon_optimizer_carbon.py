@@ -162,9 +162,52 @@ def get_optimal_cai_sequence(amino_acids: str, host: str) -> str:
         dna_parts.append(best_codon)
     return "".join(dna_parts)
 
+def calculate_sliding_gc_penalty(dna_seq: str) -> float:
+    penalty = 0.0
+    win_size = 30
+    n = len(dna_seq)
+    if n < win_size:
+        return 0.0
+    for i in range(n - win_size + 1):
+        window = dna_seq[i:i+win_size]
+        gc_count = window.count("G") + window.count("C")
+        gc_ratio = gc_count / win_size
+        if gc_ratio < 0.30:
+            penalty += (0.30 - gc_ratio) ** 2 * 10.0
+        elif gc_ratio > 0.70:
+            penalty += (gc_ratio - 0.70) ** 2 * 10.0
+    return penalty
+
+def calculate_motif_penalty(dna_seq: str, host: str) -> float:
+    penalty = 0.0
+    if host == "e_coli":
+        # Shine-Dalgarno ribosome binding sites
+        for sd in ["AGGAGG", "GGAGG", "GAGGAG"]:
+            penalty += dna_seq.count(sd) * 8.0
+    elif host == "human":
+        # mRNA instability motif
+        penalty += dna_seq.count("ATTTA") * 8.0
+    return penalty
+
+def calculate_5prime_structure_penalty(dna_seq: str) -> float:
+    # Heuristic for translation initiation region secondary structure
+    n = min(36, len(dna_seq))
+    seq_5p = dna_seq[:n]
+    penalty = 0.0
+    complement = {"A": "T", "T": "A", "G": "C", "C": "G"}
+    for length in [4, 5, 6]:
+        for i in range(len(seq_5p) - length + 1):
+            sub = seq_5p[i:i+length]
+            rev_comp_sub = "".join(complement.get(b, "N") for b in reversed(sub))
+            if "N" not in rev_comp_sub and rev_comp_sub in seq_5p:
+                penalty += 3.0 * (length - 3)
+    return penalty
+
 def evaluate_objective(dna_seq: str, amino_acids: str, host: str, evaluator: CarbonLikelihoodEvaluator) -> float:
     """
     Computes the multi-objective fitness score of the DNA sequence.
+    Optimizes CAI, GC, repeats, restriction sites, codon likelihood, 5' secondary structure,
+    sliding-window GC balance, and ribosomal pause motifs.
     """
     # 1. CAI
     cai = calculate_cai(dna_seq, amino_acids, host)
@@ -179,6 +222,9 @@ def evaluate_objective(dna_seq: str, amino_acids: str, host: str, evaluator: Car
         gc_penalty = (0.40 - gc_ratio) ** 2 * 20.0
     elif gc_ratio > 0.60:
         gc_penalty = (gc_ratio - 0.60) ** 2 * 20.0
+        
+    # 2b. Sliding window GC balance (prevents local GC spikes/troughs)
+    sliding_gc = calculate_sliding_gc_penalty(dna_seq)
         
     # 3. Homopolymer repeats
     repeat_penalty = 0.0
@@ -195,12 +241,26 @@ def evaluate_objective(dna_seq: str, amino_acids: str, host: str, evaluator: Car
         if site_count > 0:
             restriction_penalty += site_count * 10.0
             
+    # 4b. Ribosome pause or instability motifs (Shine-Dalgarno, ATTTA)
+    motif_penalty = calculate_motif_penalty(dna_seq, host)
+            
+    # 4c. 5' mRNA translation initiation region secondary structure (hairpins)
+    struct_5p_penalty = calculate_5prime_structure_penalty(dna_seq)
+            
     # 5. Carbon-like Likelihood Score
     carbon_score = evaluator.score_sequence(dna_seq)
     
     # Total Score to maximize
-    # CAI (max 1.0) + carbon_score (max 0.0, negative penalties) - GC - repeats - restriction
-    total_score = (cai * 10.0) + carbon_score - gc_penalty - repeat_penalty - restriction_penalty
+    total_score = (
+        (cai * 10.0) 
+        + carbon_score 
+        - gc_penalty 
+        - sliding_gc 
+        - repeat_penalty 
+        - restriction_penalty 
+        - motif_penalty 
+        - struct_5p_penalty
+    )
     return total_score
 
 def optimize_codons(amino_acids: str, host: str = "human", steps: int = 1000, 
@@ -285,31 +345,36 @@ def optimize_codons(amino_acids: str, host: str = "human", steps: int = 1000,
         "max_homopolymer_run": max_run
     }
 
-def run_codon_optimization(fasta_path: str, host: str, output_csv: str, steps: int = 1000):
+def run_codon_optimization(fasta_path: str, host: str, output_csv: str, steps: int = 1000, raw_seq: str = None):
     """
-    Reads an amino acid fasta, runs optimization for each sequence, and writes the results.
+    Reads an amino acid fasta or raw sequence, runs optimization, and writes the results.
     """
     print("==============================================")
     print("  Somasays Codon Optimizer & mRNA Likelihood Engine")
     print("==============================================")
-    print(f"[*] Loading protein sequences from: {fasta_path}")
+    if raw_seq:
+        print(f"[*] Optimizing raw sequence directly: {raw_seq}")
+    else:
+        print(f"[*] Loading protein sequences from: {fasta_path}")
     print(f"[*] Target expression host: {host}")
     
-    # Simple fasta parser
     sequences = {}
-    current_header = None
-    
-    with open(fasta_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith(">"):
-                current_header = line[1:]
-                sequences[current_header] = []
-            elif current_header:
-                sequences[current_header].append(line)
-                
-    for header in sequences:
-        sequences[header] = "".join(sequences[header]).replace(" ", "").upper()
+    if raw_seq:
+        sequences["single_input"] = raw_seq.replace(" ", "").upper()
+    else:
+        # Simple fasta parser
+        current_header = None
+        with open(fasta_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith(">"):
+                    current_header = line[1:]
+                    sequences[current_header] = []
+                elif current_header:
+                    sequences[current_header].append(line)
+                    
+        for header in sequences:
+            sequences[header] = "".join(sequences[header]).replace(" ", "").upper()
         
     if not sequences:
         print("[ERROR] No sequences found in the fasta file.")
@@ -342,10 +407,34 @@ def run_codon_optimization(fasta_path: str, host: str, output_csv: str, steps: i
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optimize protein back-translation for mRNA expression and synthesis")
-    parser.add_argument("--fasta", type=str, required=True, help="Input FASTA file containing protein designs")
-    parser.add_argument("--host", type=str, choices=["human", "e_coli"], default="human", help="Host expression system")
-    parser.add_argument("--out_csv", type=str, required=True, help="Output CSV report file")
+    parser.add_argument("--fasta", type=str, help="Input FASTA file containing protein designs")
+    parser.add_argument("--in_seq", type=str, help="Input amino acid sequence directly")
+    parser.add_argument("--host", type=str, default="human", help="Host expression system (e_coli / human / ecoli)")
+    parser.add_argument("--out_csv", type=str, help="Output CSV report file")
+    parser.add_argument("--out_file", type=str, help="Output CSV report file (alias for out_csv)")
     parser.add_argument("--steps", type=int, default=1000, help="Number of simulated annealing steps")
     
     args = parser.parse_args()
-    run_codon_optimization(args.fasta, args.host, args.out_csv, args.steps)
+    
+    # Resolve CSV output
+    output_csv = args.out_csv or args.out_file
+    if not output_csv:
+        parser.error("Either --out_csv or --out_file must be specified.")
+        
+    # Resolve Host alias
+    host = args.host
+    if host == "ecoli":
+        host = "e_coli"
+    elif host not in ["human", "e_coli"]:
+        parser.error("Host must be one of: human, e_coli, ecoli")
+        
+    # Resolve Input type
+    if not args.fasta and not args.in_seq:
+        parser.error("Either --fasta or --in_seq must be specified.")
+        
+    # Ensure parent directory of output_csv exists
+    out_dir = os.path.dirname(output_csv)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+        
+    run_codon_optimization(args.fasta, host, output_csv, args.steps, raw_seq=args.in_seq)
