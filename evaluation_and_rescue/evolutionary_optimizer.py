@@ -20,7 +20,7 @@ predictor_root = os.path.abspath("evaluation_and_rescue/absolute-stability-predi
 sys.path.append(predictor_root)
 
 from SaProtdG import SaProtdG, SaProtdG_predict
-from evaluation_and_rescue.structural_qc import predict_mhc_epitopes
+from evaluation_and_rescue.structural_qc import predict_mhc_epitopes, predict_tcr_activation_epitopes
 from evaluation_and_rescue.codon_optimizer_carbon import optimize_codons
 from evaluation_and_rescue.manufacturability_profiler import estimate_isoelectric_point
 
@@ -131,20 +131,23 @@ def run_evolution():
     baseline_gravy = calculate_gravy(seed_seq)
     baseline_mhc = len(predict_mhc_epitopes(seed_seq))
     baseline_pi = estimate_isoelectric_point(seed_seq)
+    baseline_tcr = len(predict_tcr_activation_epitopes(seed_seq, threshold=0.5))
     
     print(f"  -> Baseline Predicted dG: {baseline_dg:.3f} kcal/mol")
     print(f"  -> Baseline pI: {baseline_pi:.2f}")
     print(f"  -> Baseline GRAVY: {baseline_gravy:.3f}")
     print(f"  -> Baseline MHC-II Epitopes: {baseline_mhc}")
+    print(f"  -> Baseline TCR Epitopes: {baseline_tcr}")
     
     # Keep track of best candidates
-    best_candidates = [] # list of tuples: (dg, sequence, mhc, gravy, pdb_path)
-    best_candidates.append((baseline_dg, seed_seq, baseline_mhc, baseline_gravy, baseline_pdb))
+    best_candidates = [] # list of tuples: (dg, sequence, mhc, tcr, gravy, pdb_path)
+    best_candidates.append((baseline_dg, seed_seq, baseline_mhc, baseline_tcr, baseline_gravy, baseline_pdb))
     
     curr_seq = seed_seq
     curr_dg = baseline_dg
     curr_gravy = baseline_gravy
     curr_mhc = baseline_mhc
+    curr_tcr = baseline_tcr
     
     temp = args.temp_start
     cooling_rate = args.cooling_rate
@@ -157,6 +160,7 @@ def run_evolution():
         "gravy": baseline_gravy,
         "pi": baseline_pi,
         "mhc_epitopes": baseline_mhc,
+        "tcr_epitopes": baseline_tcr,
         "accepted": True,
         "reason": "Seed Sequence"
     })
@@ -191,7 +195,7 @@ def run_evolution():
             print(f"  [REJECTED] GRAVY score too hydrophobic: {mut_gravy:.3f} > {max_allowed_gravy:.3f}")
             history.append({
                 "step": step, "sequence": mut_seq, "dG": 9.9, "gravy": mut_gravy, "pi": estimate_isoelectric_point(mut_seq),
-                "mhc_epitopes": 99, "accepted": False, "reason": "GRAVY threshold exceeded"
+                "mhc_epitopes": 99, "tcr_epitopes": 99, "accepted": False, "reason": "GRAVY threshold exceeded"
             })
             continue
             
@@ -200,8 +204,18 @@ def run_evolution():
         if mut_mhc > baseline_mhc:
             print(f"  [REJECTED] Created new MHC-II epitopes: {mut_mhc} > {baseline_mhc}")
             history.append({
-                "step": step, "sequence": mut_seq, "dG": 9.9, "gravy": mut_gravy,
-                "mhc_epitopes": mut_mhc, "accepted": False, "reason": "New MHC-II epitopes created"
+                "step": step, "sequence": mut_seq, "dG": 9.9, "gravy": mut_gravy, "pi": estimate_isoelectric_point(mut_seq),
+                "mhc_epitopes": mut_mhc, "tcr_epitopes": 99, "accepted": False, "reason": "New MHC-II epitopes created"
+            })
+            continue
+            
+        # B2. TCR Specificity Activation Check (Wang et al., 2026)
+        mut_tcr = len(predict_tcr_activation_epitopes(mut_seq, threshold=0.5))
+        if mut_tcr > baseline_tcr:
+            print(f"  [REJECTED] Created new TCR activation epitopes: {mut_tcr} > {baseline_tcr}")
+            history.append({
+                "step": step, "sequence": mut_seq, "dG": 9.9, "gravy": mut_gravy, "pi": estimate_isoelectric_point(mut_seq),
+                "mhc_epitopes": mut_mhc, "tcr_epitopes": mut_tcr, "accepted": False, "reason": "New TCR activation epitopes created"
             })
             continue
             
@@ -211,7 +225,7 @@ def run_evolution():
             print(f"  [REJECTED] pI near physiological pH (aggregation risk): {mut_pi:.2f}")
             history.append({
                 "step": step, "sequence": mut_seq, "dG": 9.9, "gravy": mut_gravy, "pi": mut_pi,
-                "mhc_epitopes": mut_mhc, "accepted": False, "reason": f"pI near physiological pH: {mut_pi:.2f}"
+                "mhc_epitopes": mut_mhc, "tcr_epitopes": 99, "accepted": False, "reason": f"pI near physiological pH: {mut_pi:.2f}"
             })
             continue
             
@@ -248,6 +262,7 @@ def run_evolution():
             curr_dg = mut_dg
             curr_gravy = mut_gravy
             curr_mhc = mut_mhc
+            curr_tcr = mut_tcr
             
             # Save accepted pdb with custom name
             final_mut_pdb = os.path.join(args.out_dir, f"accepted_step_{step}.pdb")
@@ -255,7 +270,7 @@ def run_evolution():
                 os.rename(mut_pdb, final_mut_pdb)
                 
             # Add to best candidates list
-            best_candidates.append((mut_dg, mut_seq, mut_mhc, mut_gravy, final_mut_pdb))
+            best_candidates.append((mut_dg, mut_seq, mut_mhc, mut_tcr, mut_gravy, final_mut_pdb))
         else:
             print(f"  [REJECTED] {reason}")
             # Delete temporary pdb
@@ -269,6 +284,7 @@ def run_evolution():
             "gravy": mut_gravy,
             "pi": mut_pi,
             "mhc_epitopes": mut_mhc,
+            "tcr_epitopes": mut_tcr,
             "accepted": accepted,
             "reason": reason
         })
@@ -278,7 +294,7 @@ def run_evolution():
         
     # Write search history
     with open(args.output, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["step", "sequence", "dG", "gravy", "pi", "mhc_epitopes", "accepted", "reason"])
+        writer = csv.DictWriter(f, fieldnames=["step", "sequence", "dG", "gravy", "pi", "mhc_epitopes", "tcr_epitopes", "accepted", "reason"])
         writer.writeheader()
         writer.writerows(history)
         
@@ -294,13 +310,13 @@ def run_evolution():
     
     top_n = min(3, len(best_candidates))
     for r in range(top_n):
-        dg, seq, mhc, gravy, pdb_path = best_candidates[r]
+        dg, seq, mhc, tcr, gravy, pdb_path = best_candidates[r]
         rank_name = f"evolved_rank_{r+1}"
         
         # Save FASTA
         fasta_path = os.path.join(args.out_dir, f"{rank_name}.fasta")
         with open(fasta_path, "w") as f:
-            f.write(f">{rank_name} | Evolved Cysteine-Free Binder | dG={dg:.3f} | GRAVY={gravy:.3f} | MHC={mhc}\n{seq}\n")
+            f.write(f">{rank_name} | Evolved Cysteine-Free Binder | dG={dg:.3f} | GRAVY={gravy:.3f} | MHC={mhc} | TCR={tcr}\n{seq}\n")
             
         # Copy best PDB to final name
         final_pdb = os.path.join(args.out_dir, f"{rank_name}.pdb")
@@ -308,7 +324,7 @@ def run_evolution():
         if os.path.exists(pdb_path):
             shutil.copy2(pdb_path, final_pdb)
             
-        print(f"Rank {r+1}: {seq} (dG: {dg:.3f} kcal/mol, GRAVY: {gravy:.3f}, MHC: {mhc})")
+        print(f"Rank {r+1}: {seq} (dG: {dg:.3f} kcal/mol, GRAVY: {gravy:.3f}, MHC: {mhc}, TCR: {tcr})")
         print(f"   -> Saved: {final_pdb}")
         print(f"   -> Saved: {fasta_path}")
         
@@ -320,7 +336,7 @@ def run_evolution():
             
     # 6. Codon Optimization on the Top Lead
     if len(best_candidates) > 0:
-        best_dg, best_seq, best_mhc, best_gravy, _ = best_candidates[0]
+        best_dg, best_seq, best_mhc, best_tcr, best_gravy, _ = best_candidates[0]
         print(f"\n[*] Running Simulated Annealing Codon Optimization for Top Lead: {best_seq}")
         
         # Optimize for E. Coli and Human hosts

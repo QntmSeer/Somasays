@@ -9,6 +9,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from evaluation_and_rescue.binding_interface_analyzer import parse_pdb_coordinates, calculate_distance
+from evaluation_and_rescue.tcr_peptide_predictor import score_tcr_activation
 
 # HLA-DRB1 Consensus Anchoring Preferences for MHC-II binding prediction
 # P1: Large hydrophobic / aromatic
@@ -48,18 +49,47 @@ def predict_mhc_epitopes(sequence: str) -> list:
             
     return epitopes
 
+def predict_tcr_activation_epitopes(sequence: str, threshold: float = 0.5) -> list:
+    """
+    Predicts potential TCR binding and activation 9-mer epitopes using the
+    fine-tuned pLM specificity framework (Wang et al., 2026).
+    Returns list of tuples (start_idx, 9mer_seq, score).
+    """
+    seq = sequence.upper()
+    epitopes = []
+    if len(seq) < 9:
+        return epitopes
+        
+    for i in range(len(seq) - 8):
+        sub = seq[i:i+9]
+        # Score against the default public disease-associated TCR (19.2)
+        score = score_tcr_activation(sub, "CASSPATYSTDTQYF")
+        if score >= threshold:
+            epitopes.append((i + 1, sub, score))
+            
+    return epitopes
+
 def parse_atoms_for_qc(pdb_path: str, chain_id: str = "A") -> dict:
     """
-    Parses a PDB file and returns:
+    Parses a structure file (PDB or CIF) and returns:
     - cys_atoms: list of dicts with coordinate info for CYS residues (preferring SG sulfur, falling back to CB/CA).
     - n_terminus: coordinate tuple of first N atom of the chain.
     - c_terminus: coordinate tuple of last C/O atom of the chain.
     - sequence: reconstructed amino acid sequence of the chain.
     """
+    chains = parse_pdb_coordinates(pdb_path)
+    if chain_id not in chains:
+        return {
+            "cys_coords": [],
+            "n_terminus": None,
+            "c_terminus": None,
+            "sequence": ""
+        }
+    
+    atoms = chains[chain_id]
     cys_residues = {}
     n_atom_coord = None
     c_atom_coord = None
-    
     first_res_seq = None
     last_res_seq = None
     
@@ -74,61 +104,47 @@ def parse_atoms_for_qc(pdb_path: str, chain_id: str = "A") -> dict:
         "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V"
     }
 
-    with open(pdb_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.startswith("ATOM  ") or line.startswith("HETATM"):
-                ch = line[21].strip()
-                if not ch:
-                    ch = "A"
-                if ch != chain_id:
-                    continue
-                    
-                atom_name = line[12:16].strip()
-                res_name = line[17:20].strip()
-                res_seq = int(line[22:26].strip())
+    for atom in atoms:
+        atom_name = atom["atom_name"]
+        res_name = atom["res_name"]
+        res_seq = atom["res_seq"]
+        x, y, z = atom["coord"]
+        
+        # Reconstruct sequence
+        if res_name in aa3_to_1:
+            res_seq_to_name[res_seq] = aa3_to_1[res_name]
+        
+        # Trace N-terminus (N atom of first residue sequence number)
+        if atom_name == "N":
+            if first_res_seq is None or res_seq < first_res_seq:
+                first_res_seq = res_seq
+                n_atom_coord = (x, y, z)
                 
-                try:
-                    x = float(line[30:38].strip())
-                    y = float(line[38:46].strip())
-                    z = float(line[46:54].strip())
-                except ValueError:
-                    continue
+        # Trace C-terminus (C or O atom of last residue sequence number)
+        if atom_name in ["C", "O"]:
+            if last_res_seq is None or res_seq > last_res_seq:
+                last_res_seq = res_seq
+                c_atom_coord = (x, y, z)
                 
-                # Reconstruct sequence
-                if res_name in aa3_to_1:
-                    res_seq_to_name[res_seq] = aa3_to_1[res_name]
-                
-                # Trace N-terminus (N atom of first residue sequence number)
-                if atom_name == "N":
-                    if first_res_seq is None or res_seq < first_res_seq:
-                        first_res_seq = res_seq
-                        n_atom_coord = (x, y, z)
-                        
-                # Trace C-terminus (C or O atom of last residue sequence number)
-                if atom_name in ["C", "O"]:
-                    if last_res_seq is None or res_seq > last_res_seq:
-                        last_res_seq = res_seq
-                        c_atom_coord = (x, y, z)
-                        
-                # Extract Cysteine coordinates
-                if res_name == "CYS":
-                    if res_seq not in cys_residues:
-                        cys_residues[res_seq] = {}
-                    cys_residues[res_seq][atom_name] = (x, y, z)
+        # Extract Cysteine coordinates
+        if res_name == "CYS":
+            if res_seq not in cys_residues:
+                cys_residues[res_seq] = {}
+            cys_residues[res_seq][atom_name] = (x, y, z)
 
     # Compile cysteine coordinates (prefer SG, fall back to CB, then CA)
     cys_coords = []
-    for res_seq, atoms in sorted(cys_residues.items()):
+    for res_seq, res_atoms in sorted(cys_residues.items()):
         coord = None
         atom_used = ""
-        if "SG" in atoms:
-            coord = atoms["SG"]
+        if "SG" in res_atoms:
+            coord = res_atoms["SG"]
             atom_used = "SG"
-        elif "CB" in atoms:
-            coord = atoms["CB"]
+        elif "CB" in res_atoms:
+            coord = res_atoms["CB"]
             atom_used = "CB"
-        elif "CA" in atoms:
-            coord = atoms["CA"]
+        elif "CA" in res_atoms:
+            coord = res_atoms["CA"]
             atom_used = "CA"
             
         if coord:
@@ -218,6 +234,15 @@ def analyze_structural_qc(pdb_path: str, chain_id: str = "A") -> dict:
     elif immunogenicity_score >= 1:
         immunogenicity_risk = "Moderate"
         
+    # 4. TCR Specificity Activation screening (Wang et al., 2026)
+    tcr_epitopes = predict_tcr_activation_epitopes(sequence, threshold=0.5)
+    tcr_count = len(tcr_epitopes)
+    tcr_risk = "Low"
+    if tcr_count >= 2:
+        tcr_risk = "High"
+    elif tcr_count == 1:
+        tcr_risk = "Moderate"
+        
     return {
         "sequence": sequence,
         "num_cys": num_cys,
@@ -228,7 +253,10 @@ def analyze_structural_qc(pdb_path: str, chain_id: str = "A") -> dict:
         "cyclization_feasibility": cyclization_status,
         "mhc_epitopes_count": immunogenicity_score,
         "immunogenicity_risk": immunogenicity_risk,
-        "mhc_epitopes_list": [e[1] for e in epitopes]
+        "mhc_epitopes_list": [e[1] for e in epitopes],
+        "tcr_epitopes_count": tcr_count,
+        "tcr_risk": tcr_risk,
+        "tcr_epitopes_list": [e[1] for e in tcr_epitopes]
     }
 
 def run_structural_qc_pipeline(in_dir: str, out_dir: str, chain_id: str):
@@ -265,14 +293,17 @@ def run_structural_qc_pipeline(in_dir: str, out_dir: str, chain_id: str):
             "cyclization_dist": qc["cyclization_dist_angstrom"],
             "cyclization_feasibility": qc["cyclization_feasibility"],
             "mhc_epitopes": qc["mhc_epitopes_count"],
-            "immunogenicity_risk": qc["immunogenicity_risk"]
+            "immunogenicity_risk": qc["immunogenicity_risk"],
+            "tcr_epitopes": qc["tcr_epitopes_count"],
+            "tcr_risk": qc["tcr_risk"]
         })
         
     # Write CSV
     with open(report_csv, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=[
             "name", "length", "cysteines", "disulfides", "free_thiols", 
-            "cyclization_dist", "cyclization_feasibility", "mhc_epitopes", "immunogenicity_risk"
+            "cyclization_dist", "cyclization_feasibility", "mhc_epitopes", "immunogenicity_risk",
+            "tcr_epitopes", "tcr_risk"
         ])
         writer.writeheader()
         for r in records:

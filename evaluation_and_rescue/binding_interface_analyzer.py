@@ -7,40 +7,74 @@ import argparse
 
 def parse_pdb_coordinates(pdb_path: str) -> dict:
     """
-    Parses a PDB file and extracts coordinates, atom types, residues, and B-factors (pLDDT).
+    Parses a PDB/CIF file and extracts coordinates, atom types, residues, and B-factors (pLDDT).
     Returns a dict mapping chain IDs to list of atom dicts.
     """
     chains = {}
+    is_cif = pdb_path.lower().endswith(".cif")
     with open(pdb_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.startswith("ATOM  ") or line.startswith("HETATM"):
-                chain_id = line[21].strip()
-                if not chain_id:
-                    chain_id = "A" # Default fallback
-                
-                atom_name = line[12:16].strip()
-                res_name = line[17:20].strip()
-                res_seq = int(line[22:26].strip())
-                
-                try:
-                    x = float(line[30:38].strip())
-                    y = float(line[38:46].strip())
-                    z = float(line[46:54].strip())
-                    plddt = float(line[60:66].strip()) # B-factor stores pLDDT in structural models
-                except ValueError:
+        if is_cif:
+            in_atom_site = False
+            for line in f:
+                if line.startswith("loop_"):
+                    in_atom_site = False
+                if line.startswith("_atom_site.group_PDB"):
+                    in_atom_site = True
                     continue
-                
-                atom_record = {
-                    "atom_name": atom_name,
-                    "res_name": res_name,
-                    "res_seq": res_seq,
-                    "coord": (x, y, z),
-                    "plddt": plddt
-                }
-                
-                if chain_id not in chains:
-                    chains[chain_id] = []
-                chains[chain_id].append(atom_record)
+                if in_atom_site and line.startswith("ATOM"):
+                    parts = line.split()
+                    if len(parts) >= 13:
+                        chain_id = parts[6]
+                        atom_name = parts[3]
+                        res_name = parts[5]
+                        try:
+                            res_seq = int(parts[8])
+                            x = float(parts[10])
+                            y = float(parts[11])
+                            z = float(parts[12])
+                            plddt = float(parts[14]) if len(parts) >= 15 else 0.0
+                        except ValueError:
+                            continue
+                        atom_record = {
+                            "atom_name": atom_name,
+                            "res_name": res_name,
+                            "res_seq": res_seq,
+                            "coord": (x, y, z),
+                            "plddt": plddt
+                        }
+                        if chain_id not in chains:
+                            chains[chain_id] = []
+                        chains[chain_id].append(atom_record)
+        else:
+            for line in f:
+                if line.startswith("ATOM  ") or line.startswith("HETATM"):
+                    chain_id = line[21].strip()
+                    if not chain_id:
+                        chain_id = "A" # Default fallback
+                    
+                    atom_name = line[12:16].strip()
+                    res_name = line[17:20].strip()
+                    res_seq = int(line[22:26].strip())
+                    
+                    try:
+                        x = float(line[30:38].strip())
+                        y = float(line[38:46].strip())
+                        z = float(line[46:54].strip())
+                        plddt = float(line[60:66].strip()) # B-factor stores pLDDT in structural models
+                    except ValueError:
+                        continue
+                    
+                    atom_record = {
+                        "atom_name": atom_name,
+                        "res_name": res_name,
+                        "res_seq": res_seq,
+                        "coord": (x, y, z),
+                        "plddt": plddt
+                    }
+                    
+                    if chain_id not in chains:
+                        chains[chain_id] = []
+                    chains[chain_id].append(atom_record)
     return chains
 
 def calculate_distance(coord1, coord2) -> float:
