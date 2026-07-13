@@ -145,9 +145,8 @@ class ESM3BenchmarkSuite:
                         else:
                             raise e
             except Exception as e:
-                print(f"[BENCHMARK] ERROR: Configuration {name} failed to profile: {e}")
-                if name in results:
-                    del results[name]
+                print(f"[BENCHMARK] ERROR: Configuration {name} failed to profile: {e}. Skipping (no backfill).")
+                results.pop(name, None)
                 
         return results
 
