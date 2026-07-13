@@ -38,20 +38,13 @@ REALISTIC_BENCHMARKS = {
         1024: {"latency": 5.8, "vram": 5.9, "oom": False},
         1536: {"latency": 8.9, "vram": 8.4, "oom": False},
         2048: {"latency": 12.4, "vram": 11.2, "oom": False}
-    },
-    "Quantized 8-Bit": {
-        128: {"latency": 1.2, "vram": 1.2, "oom": False},
-        256: {"latency": 2.1, "vram": 1.4, "oom": False},
-        512: {"latency": 4.2, "vram": 1.8, "oom": False},
-        1024: {"latency": 8.1, "vram": 3.1, "oom": False},
-        1536: {"latency": 12.2, "vram": 4.5, "oom": False},
-        2048: {"latency": 16.8, "vram": 6.1, "oom": False}
     }
 }
 
 class ESM3BenchmarkSuite:
-    def __init__(self, output_dir: str = "outputs"):
+    def __init__(self, output_dir: str = "outputs", simulated: bool = False):
         self.output_dir = output_dir
+        self.simulated = simulated
         os.makedirs(self.output_dir, exist_ok=True)
         
         # Check environment
@@ -66,14 +59,26 @@ class ESM3BenchmarkSuite:
             pass
 
         if not (self.has_gpu and self.has_esm):
+            if not self.simulated:
+                raise RuntimeError(
+                    "CUDA GPU or 'esm' library not found in local environment. "
+                    "Physical benchmarking cannot run. To generate target projection profiles "
+                    "using simulated reference data, re-run with the --simulated flag."
+                )
             print("[BENCHMARK] INFO: Missing CUDA or 'esm' library in local environment.")
             print("[BENCHMARK] Entering 'Simulated Profile Mode' to output realistic ESM3 target benchmarks.")
         else:
-            print("[BENCHMARK] CUDA and 'esm' library detected. Running live GPU benchmarks.")
+            if self.simulated:
+                print("[BENCHMARK] Running in SIMULATED mode as requested, despite GPU availability.")
+            else:
+                print("[BENCHMARK] CUDA and 'esm' library detected. Running live GPU benchmarks.")
+
+        self.prefix = "simulated_" if (not (self.has_gpu and self.has_esm) or self.simulated) else "measured_"
+        self.mode_label = "Projected" if (not (self.has_gpu and self.has_esm) or self.simulated) else "Measured"
 
     def run_benchmark_sweep(self) -> Dict[str, Any]:
         """Runs the benchmark across all configurations."""
-        if not (self.has_gpu and self.has_esm):
+        if not (self.has_gpu and self.has_esm) or self.simulated:
             # Fall back to returning the realistic reference benchmarks
             print("[BENCHMARK] Loading reference results for L4/A100 optimization comparisons...")
             return REALISTIC_BENCHMARKS
@@ -90,8 +95,7 @@ class ESM3BenchmarkSuite:
         configs = [
             {"name": "FP32 Baseline", "precision": "fp32", "sdpa": False},
             {"name": "FP16 Mixed Precision", "precision": "fp16", "sdpa": False},
-            {"name": "BF16 + FlashAttention (SDPA)", "precision": "bf16", "sdpa": True},
-            {"name": "Quantized 8-Bit", "precision": "fp16", "sdpa": True, "quantized": True} # Dynamic casting simulation
+            {"name": "BF16 + FlashAttention (SDPA)", "precision": "bf16", "sdpa": True}
         ]
         
         for config in configs:
@@ -156,8 +160,7 @@ class ESM3BenchmarkSuite:
         colors = {
             "FP32 Baseline": "#e74c3c",                # Crimson Red
             "FP16 Mixed Precision": "#f39c12",         # Orange
-            "BF16 + FlashAttention (SDPA)": "#2ecc71", # Forest Green
-            "Quantized 8-Bit": "#3498db"               # Cobalt Blue
+            "BF16 + FlashAttention (SDPA)": "#2ecc71"  # Forest Green
         }
         
         # --- CHART 1: LATENCY CURVES ---
@@ -178,13 +181,13 @@ class ESM3BenchmarkSuite:
                 plt.axvline(x=oom_len - 100, color=colors[config_name], linestyle='--', alpha=0.6)
                 plt.text(oom_len - 200, max(y)*0.7, f"{config_name}\nOOM Point", color=colors[config_name], rotation=90, fontsize=9)
 
-        plt.title("ESM3 Structural Inference Latency Scaling vs. Sequence Length", fontsize=12, fontweight='bold', pad=15)
+        plt.title(f"ESM3 {self.mode_label} Structural Inference Latency Scaling vs. Sequence Length", fontsize=12, fontweight='bold', pad=15)
         plt.xlabel("Protein Sequence Length (Residues)", fontsize=10)
         plt.ylabel("Inference Latency (Seconds)", fontsize=10)
         plt.grid(True, linestyle=':', alpha=0.6)
         plt.legend(loc="upper left", frameon=True)
         plt.tight_layout()
-        plt.savefig(os.path.join(self.output_dir, "latency_comparison.png"), dpi=300)
+        plt.savefig(os.path.join(self.output_dir, f"{self.prefix}latency_comparison.png"), dpi=300)
         plt.close()
 
         # --- CHART 2: MEMORY FOOTPRINT CURVES ---
@@ -199,13 +202,13 @@ class ESM3BenchmarkSuite:
             
             plt.plot(x, y, marker='s', linewidth=2.5, color=colors[config_name], label=config_name)
 
-        plt.title("ESM3 Peak GPU VRAM Footprint vs. Sequence Length", fontsize=12, fontweight='bold', pad=15)
+        plt.title(f"ESM3 Peak {self.mode_label} GPU VRAM Footprint vs. Sequence Length", fontsize=12, fontweight='bold', pad=15)
         plt.xlabel("Protein Sequence Length (Residues)", fontsize=10)
         plt.ylabel("Peak VRAM Allocation (GB)", fontsize=10)
         plt.grid(True, linestyle=':', alpha=0.6)
         plt.legend(loc="upper left")
         plt.tight_layout()
-        plt.savefig(os.path.join(self.output_dir, "memory_comparison.png"), dpi=300)
+        plt.savefig(os.path.join(self.output_dir, f"{self.prefix}memory_comparison.png"), dpi=300)
         plt.close()
 
         # --- CHART 3: THROUGHPUT CURVES ---
@@ -222,34 +225,39 @@ class ESM3BenchmarkSuite:
             
             plt.plot(x, y, marker='^', linewidth=2.5, color=colors[config_name], label=config_name)
 
-        plt.title("ESM3 Inference Throughput Scaling vs. Sequence Length", fontsize=12, fontweight='bold', pad=15)
+        plt.title(f"ESM3 {self.mode_label} Inference Throughput Scaling vs. Sequence Length", fontsize=12, fontweight='bold', pad=15)
         plt.xlabel("Protein Sequence Length (Residues)", fontsize=10)
         plt.ylabel("Throughput (Tokens / Second)", fontsize=10)
         plt.grid(True, linestyle=':', alpha=0.6)
         plt.legend(loc="upper right")
         plt.tight_layout()
-        plt.savefig(os.path.join(self.output_dir, "throughput_comparison.png"), dpi=300)
+        plt.savefig(os.path.join(self.output_dir, f"{self.prefix}throughput_comparison.png"), dpi=300)
         plt.close()
 
         print(f"[BENCHMARK] Validation charts successfully saved to: {self.output_dir}/")
 
     def save_raw_results(self, results: Dict[str, Any]):
         """Saves benchmark results to JSON and CSV formats."""
-        json_path = os.path.join(self.output_dir, "benchmark_results.json")
-        csv_path = os.path.join(self.output_dir, "benchmark_summary.csv")
+        json_path = os.path.join(self.output_dir, f"{self.prefix}benchmark_results.json")
+        csv_path = os.path.join(self.output_dir, f"{self.prefix}benchmark_summary.csv")
         
         # Save JSON
+        data_to_save = {
+            "mode": "simulated" if (self.simulated or not (self.has_gpu and self.has_esm)) else "measured",
+            "results": results
+        }
         with open(json_path, "w") as f:
-            json.dump(results, f, indent=4)
+            json.dump(data_to_save, f, indent=4)
             
         # Save CSV summary
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(["Configuration", "Sequence_Length", "Latency_Sec", "Peak_VRAM_GB", "OOM_Status"])
+            writer.writerow(["Mode", "Configuration", "Sequence_Length", "Latency_Sec", "Peak_VRAM_GB", "OOM_Status"])
             
             for config, lengths_data in results.items():
                 for length, metrics in lengths_data.items():
                     writer.writerow([
+                        self.mode_label.upper(),
                         config, 
                         length, 
                         f"{metrics['latency']:.2f}" if not metrics['oom'] else "N/A", 
@@ -262,9 +270,10 @@ class ESM3BenchmarkSuite:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Somasays ESM3 Performance Benchmarker")
     parser.add_argument("--outdir", type=str, default="outputs", help="Output directory for charts and summaries")
+    parser.add_argument("--simulated", action="store_true", help="Generate target projection profiles using simulated data when no GPU is present")
     args = parser.parse_args()
     
-    suite = ESM3BenchmarkSuite(output_dir=args.outdir)
+    suite = ESM3BenchmarkSuite(output_dir=args.outdir, simulated=args.simulated)
     results = suite.run_benchmark_sweep()
     suite.plot_and_save_charts(results)
     suite.save_raw_results(results)
