@@ -39,14 +39,17 @@ Standard PyTorch mathematical attention was replaced by system-level configurati
 
 FlashAttention-2 optimizes memory hierarchy usage by computing attention in SRAM blocks rather than transferring full intermediate matrices back to High-Bandwidth Memory (HBM). This reduces attention-matrix memory scaling from $O(N^2)$ to $O(N)$, drastically lowering VRAM scaling and speeding up computations.
 
-### C. Low-Precision Weight Quantization
-A dedicated wrapper interface was designed to support low-precision loading configuration. This allows the model to load in 8-bit or 4-bit configurations via `bitsandbytes`, compressing the 1.4B model weights down to **1.4 GB / 0.7 GB** respectively, enabling large foundation model inference on small, cost-effective GPU instances.
+### C. Planned Low-Precision Weight Quantization
+The platform includes wrapper interfaces designed to outline low-precision weight loading configurations. When fully implemented via `bitsandbytes`, this is designed to load model weights in 8-bit or 4-bit configurations to compress the active memory footprint down to **1.4 GB / 0.7 GB** respectively, enabling foundation model inference on budget-friendly consumer GPUs.
 
 ---
 
-## 3. Quantified Performance Benchmarks
+## 3. Projected Performance Benchmarks (Modeled Profiles)
 
-The benchmark suite (`benchmark_suite.py`) systematically swept sequence lengths from **128 to 2,048 residues** across four configurations on an enterprise cloud GPU node. The quantified results are detailed below:
+The benchmark suite (`benchmark_suite.py`) systematically swept sequence lengths from **128 to 2,048 residues** across configurations to outline hardware optimization capabilities. The projected results are detailed below:
+
+> [!NOTE]
+> The metrics detailed below represent target performance profiles modeled using `benchmark_suite.py` in Simulated Profile Mode. These reflect projected scaling behavior on NVIDIA L4/A100 hardware nodes under mixed precision and FlashAttention-2 configurations, rather than live-logged benchmark runs on physical hardware.
 
 ### Comparative Performance Table
 
@@ -67,21 +70,16 @@ The benchmark suite (`benchmark_suite.py`) systematically swept sequence lengths
 | | 1024 | 5.80 | 5.90 | NO | **176.55** |
 | | 1536 | 8.90 | 8.40 | NO | **172.58** |
 | | 2048 | 12.40 | 11.20 | NO | **165.16** |
-| **Quantized 8-Bit** | 128 | 1.20 | 1.20 | NO | 106.67 |
-| | 512 | 4.20 | 1.80 | NO | 121.90 |
-| | 1024 | 8.10 | 3.10 | NO | 126.42 |
-| | 1536 | 12.20 | 4.50 | NO | 125.90 |
-| | 2048 | 16.80 | 6.10 | NO | 121.90 |
 
 ---
 
-## 4. Quantified Optimizations Summary
+## 4. Projected Optimizations Summary
 
-By replacing the quadratic scaling matrices of traditional attention layers with FlashAttention-2 and hardware-accelerated mixed precision, the Somasays platform achieves high-throughput performance profiles across all metrics:
+By replacing the quadratic scaling matrices of traditional attention layers with FlashAttention-2 and hardware-accelerated mixed precision, the Somasays platform models high-throughput performance profiles across metrics:
 
 ### Core Optimization Benefits Table
 
-| Metric | Unoptimized FP32 Baseline | Optimized BF16 + FlashAttention | Relative Benefit |
+| Metric | Baseline FP32 Target | Projected BF16 + FlashAttention | Projected Relative Benefit |
 | :--- | :---: | :---: | :---: |
 | **Max Sequence Capacity** | 1,024 residues | **2,048 residues** | **2.0x capacity extension** (Prevents OOMs) |
 | **Execution Latency (L=1024)** | 19.50 seconds | **5.80 seconds** | **3.4x execution speedup** |
