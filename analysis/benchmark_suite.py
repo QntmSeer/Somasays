@@ -145,9 +145,9 @@ class ESM3BenchmarkSuite:
                         else:
                             raise e
             except Exception as e:
-                print(f"[BENCHMARK] Error profiling config {name}: {e}")
-                # Fallback to realistic values for that config to proceed gracefully
-                results[name] = REALISTIC_BENCHMARKS[name]
+                print(f"[BENCHMARK] ERROR: Configuration {name} failed to profile: {e}")
+                if name in results:
+                    del results[name]
                 
         return results
 

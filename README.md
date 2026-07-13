@@ -4,7 +4,7 @@
 
 # Somasays: High-Throughput ESM3 Fine-Tuning & Inference Optimization Engine
 
-Somasays is an end-to-end, production-grade computational biology framework for de novo plant-like peptide design, 3D structural folding, and high-velocity inference optimization using the **EvolutionaryScale ESM3 (1.4B Parameter) Multimodal Protein Foundation Model**. 
+Somasays is an end-to-end computational biology framework for de novo plant-like peptide design, 3D structural folding, and inference-optimization tooling using the **EvolutionaryScale ESM3 (1.4B Parameter) Multimodal Protein Foundation Model**. 
 
 This repository provides a complete pipeline from raw sequence preprocessing to distributed multi-GPU training, real-time performance profiling, structural FlashAttention optimizations, and downstream biophysical evaluation.
 
