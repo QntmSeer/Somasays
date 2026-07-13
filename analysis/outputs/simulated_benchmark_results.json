@@ -1,0 +1,101 @@
+{
+    "mode": "simulated",
+    "results": {
+        "FP32 Baseline": {
+            "128": {
+                "latency": 2.5,
+                "vram": 4.2,
+                "oom": false
+            },
+            "256": {
+                "latency": 4.8,
+                "vram": 5.1,
+                "oom": false
+            },
+            "512": {
+                "latency": 9.2,
+                "vram": 7.8,
+                "oom": false
+            },
+            "1024": {
+                "latency": 19.5,
+                "vram": 14.6,
+                "oom": false
+            },
+            "1536": {
+                "latency": 0.0,
+                "vram": 0.0,
+                "oom": true
+            },
+            "2048": {
+                "latency": 0.0,
+                "vram": 0.0,
+                "oom": true
+            }
+        },
+        "FP16 Mixed Precision": {
+            "128": {
+                "latency": 1.4,
+                "vram": 2.3,
+                "oom": false
+            },
+            "256": {
+                "latency": 2.6,
+                "vram": 2.9,
+                "oom": false
+            },
+            "512": {
+                "latency": 5.1,
+                "vram": 4.6,
+                "oom": false
+            },
+            "1024": {
+                "latency": 10.4,
+                "vram": 8.8,
+                "oom": false
+            },
+            "1536": {
+                "latency": 16.2,
+                "vram": 13.5,
+                "oom": false
+            },
+            "2048": {
+                "latency": 0.0,
+                "vram": 0.0,
+                "oom": true
+            }
+        },
+        "BF16 + FlashAttention (SDPA)": {
+            "128": {
+                "latency": 0.9,
+                "vram": 2.1,
+                "oom": false
+            },
+            "256": {
+                "latency": 1.6,
+                "vram": 2.4,
+                "oom": false
+            },
+            "512": {
+                "latency": 3.1,
+                "vram": 3.5,
+                "oom": false
+            },
+            "1024": {
+                "latency": 5.8,
+                "vram": 5.9,
+                "oom": false
+            },
+            "1536": {
+                "latency": 8.9,
+                "vram": 8.4,
+                "oom": false
+            },
+            "2048": {
+                "latency": 12.4,
+                "vram": 11.2,
+                "oom": false
+            }
+        }
+    }
+}
