@@ -47,10 +47,10 @@ graph TD
    * Leverages transformer **gradient checkpointing** and compiles a **static computation graph** topology (`_set_static_graph()`) to eliminate graph re-entrancy overhead.
    * Integrates pre-cached data-loading entirely in host memory (100GB Host RAM pre-caching) to eliminate disk I/O bottlenecks.
 
-2. **Production-Grade Inference Optimizations**:
+2. **Inference Optimization Tooling**:
    * System-level Scaled Dot Product Attention (SDPA) backend configuration forcing **FlashAttention-2** execution, reducing matrix complexity from quadratic $O(N^2)$ to linear $O(N)$.
-   * Automatic Mixed Precision (AMP) utilizing hardware bfloat16 Tensor Cores for a **2x latency speedup** and half-precision memory allocation.
-   * Custom low-precision casting and quantization interfaces.
+   * Automatic Mixed Precision (AMP) utilizing hardware bfloat16 Tensor Cores for memory-efficient and accelerated execution.
+   * Low-precision casting configuration interfaces (bfloat16/float16).
 
 3. **High-Resolution Performance Profiling**:
    * Low-overhead GPU profiler tracking token-by-token latency, VRAM footprint allocation, and residue generation throughput curves.
@@ -211,14 +211,14 @@ python evaluation_and_rescue/plot_scientific_insights.py
 
 ---
 
-## Quantified Performance Gains
+## Projected Performance Projections
 
-Our detailed benchmarking indicates that combining **bfloat16 AMP** with **FlashAttention (SDPA)** eliminates baseline computational limits:
-* **3.4x Speedup**: Latency during long structural folding loops scales linearly instead of quadratically.
-* **58% VRAM Reduction**: Peak memory footprint at 1,024 residues drops from 14.6 GB to **5.9 GB**.
-* **Expanded Context Limits**: Prevents unoptimized Out-Of-Memory (OOM) crashes, extending the maximum folding length from **1,024 to 2,048 residues**.
+Our structural modeling sweeps indicate that combining **bfloat16 AMP** with **FlashAttention (SDPA)** significantly scales execution limits on NVIDIA L4/A100 hardware profiles:
+* **3.4x Projected Speedup**: Projected execution latency during structural folding loops scales linearly rather than quadratically.
+* **58% Memory Savings**: Projected peak VRAM footprint at 1,024 residues falls from 14.6 GB to **5.9 GB**.
+* **Increased Sequence Context**: Designed to mitigate memory-related Out-of-Memory (OOM) failures for sequences up to **2,048 residues**.
 
-For a publication-grade breakdown of our findings, GPU hardware profiles, and optimization methodologies, read our full [ESM3 Optimization and Performance Case Study](optimizations_case_study.md).
+For a complete breakdown of optimization methodologies, theoretical scaling profiles, and benchmark simulation scripts, read our full [ESM3 Optimization and Performance Case Study](optimizations_case_study.md).
 
 ### Scientific Validation & Design Space Charts
 
@@ -239,8 +239,8 @@ To elevate Somasays into a fully automated, web-scale biological factory, the fo
 2. **Hopper Native FP8 & FlashAttention-3**:
    * Migrate SDPA backends to native FlashAttention-3 kernels on Hopper GPU architectures (H100/H200). This will utilize low-precision FP8 Tensor Cores to speed up sequential autoregressive decoding.
 
-3. **4-Bit NF4 Quantization (Double Quantization)**:
-   * Implement 4-bit NormalFloat (NF4) dynamic loading interfaces using `bitsandbytes`. This will compress the active model footprint below 1 GB VRAM, allowing full 3D structural inference on low-cost consumer GPUs.
+3. **8-Bit and 4-Bit Weight Quantization**:
+   * Integrate 8-bit and 4-bit NormalFloat (NF4) loading configurations using `bitsandbytes`. This will compress the active model footprint to enable foundation model inference on consumer-grade GPUs.
 
 4. **Asynchronous AlphaFold 3 API Loop**:
    * Build a background daemon to automatically submit generated protein coordinates to the AlphaFold 3 server, parse confidence metrics (pLDDT, iPAE), and store results in a PostgreSQL database for real-time downstream validation.
