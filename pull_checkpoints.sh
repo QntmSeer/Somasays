@@ -2,8 +2,8 @@
 # pull_checkpoints.sh
 # Incremental backup script to continuously sync active training checkpoints down to local Windows disk.
 
-REMOTE_HOST="somacooks-v3"
-LOCAL_BACKUP_DIR="/mnt/c/Users/Gebruiker/Documents/Computational Bio/Somasays_Backup"
+REMOTE_HOST="${REMOTE_HOST:-somacooks-v3}"
+LOCAL_BACKUP_DIR="${1:-${SOMASAYS_BACKUP_DIR:-./Somasays_Backup}}"
 
 echo "=============================================="
 echo "🔄 SOMASAYS INCREMENTAL CHECKPOINT SYNC"

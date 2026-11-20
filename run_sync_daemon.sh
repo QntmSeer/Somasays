@@ -2,8 +2,8 @@
 # run_sync_daemon.sh
 # A background daemon that loops forever and syncs down training checkpoints to local disk.
 
-REMOTE_HOST="somacooks-v3"
-LOCAL_BACKUP_DIR="/mnt/c/Users/Gebruiker/Documents/Computational Bio/Somasays_Backup"
+REMOTE_HOST="${REMOTE_HOST:-somacooks-v3}"
+LOCAL_BACKUP_DIR="${1:-${SOMASAYS_BACKUP_DIR:-./Somasays_Backup}}"
 
 mkdir -p "$LOCAL_BACKUP_DIR/weights"
 mkdir -p "$LOCAL_BACKUP_DIR/logs"
