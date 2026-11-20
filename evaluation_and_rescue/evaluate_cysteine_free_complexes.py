@@ -450,7 +450,7 @@ def _score_and_report(df: pd.DataFrame, cif_root: str):
     print("=======================================================")
 
 
-def run_evaluation(downloads_dir: str):
+def run_evaluation(downloads_dir: str, alphajudge_bin: str = None):
     print("=======================================================")
     # Translate path if running in WSL but passed Windows style paths
     if downloads_dir.lower().startswith("c:"):
@@ -475,12 +475,11 @@ def run_evaluation(downloads_dir: str):
     if os.path.exists(summary_csv):
         os.remove(summary_csv)
     
-    # Run alphajudge as a CLI command
-    alphajudge_cmd = "alphajudge"
-    if shutil.which("alphajudge") is None:
-        local_bin = "/home/qntm/.local/bin/alphajudge"
-        if os.path.exists(local_bin):
-            alphajudge_cmd = local_bin
+    # Resolve alphajudge binary from CLI flag, ALPHAJUDGE_BIN env var, or PATH
+    alphajudge_cmd = alphajudge_bin or os.environ.get("ALPHAJUDGE_BIN") or shutil.which("alphajudge")
+    if not alphajudge_cmd:
+        print("[ERROR] 'alphajudge' executable not found on PATH. Set --alphajudge-bin or ALPHAJUDGE_BIN.")
+        sys.exit(1)
             
     cmd = f"{alphajudge_cmd} \"{translated_downloads}\" -r -o \"{summary_csv}\" --models_to_analyse best"
     print(f"Executing: {cmd}")
@@ -517,13 +516,22 @@ def run_esmfold2_evaluation(fasta_dir: str):
 if __name__ == "__main__":
     import argparse as _ap
     _parser = _ap.ArgumentParser(description="Somasays evaluation pipeline")
-    _parser.add_argument("path", nargs="?", default="C:/Users/Gebruiker/Downloads",
-                         help="AF3 downloads dir (--mode af3) or FASTA dir (--mode esmfold2)")
+    _parser.add_argument("path", nargs="?", default=None,
+                         help="AF3 downloads dir (--mode af3) or FASTA dir (--mode esmfold2); "
+                              "falls back to --in_dir or SOMASAYS_INPUT_DIR env var")
+    _parser.add_argument("--in_dir", default=None,
+                         help="Alias for positional input directory path")
     _parser.add_argument("--mode", choices=["af3", "esmfold2"], default="esmfold2",
                          help="Folding backend (default: esmfold2 = local GPU)")
+    _parser.add_argument("--alphajudge-bin", default=None,
+                         help="Path to alphajudge executable (or set ALPHAJUDGE_BIN env var)")
     _args, _ = _parser.parse_known_args()
 
+    input_path = _args.path or _args.in_dir or os.environ.get("SOMASAYS_INPUT_DIR")
+    if not input_path:
+        _parser.error("An input directory path is required (pass positional path, --in_dir, or set SOMASAYS_INPUT_DIR).")
+
     if _args.mode == "esmfold2":
-        run_esmfold2_evaluation(_args.path)
+        run_esmfold2_evaluation(input_path)
     else:
-        run_evaluation(_args.path)
+        run_evaluation(input_path, alphajudge_bin=_args.alphajudge_bin)
